@@ -19,19 +19,30 @@ repositório único.
 Backend em Spring Boot para gestão de usuários (donos de restaurante e clientes), com
 autenticação JWT, banco PostgreSQL e orquestração via Docker Compose.
 
-- **Código-fonte:** [`fase-01/restaurantes/`](fase-01/restaurantes/)
-- **Relatório técnico (entregável oficial):** [`fase-01/relatorio/`](fase-01/relatorio/)
-- **Como executar / detalhes:** ver [`fase-01/README.md`](fase-01/README.md) e o
-  [README do projeto](fase-01/restaurantes/README.md).
+Como desafio de estudo, a **mesma Fase 1** é implementada em **duas arquiteturas** lado a
+lado:
+
+| Variante | Código-fonte | Relatório | Status |
+|----------|--------------|-----------|--------|
+| **Em camadas** (SOLID + Clean Code) | [`fase-01/camadas/restaurantes/`](fase-01/camadas/restaurantes/) | [`fase-01/relatorios/camadas/`](fase-01/relatorios/camadas/) | ✅ completo |
+| **Hexagonal** (Ports & Adapters) | [`fase-01/hexagonal/restaurantes/`](fase-01/hexagonal/restaurantes/) | [`fase-01/relatorios/hexagonal/`](fase-01/relatorios/hexagonal/) | 🔄 Etapa 1 (scaffold) |
+
+- **Como executar / detalhes:** ver [`fase-01/README.md`](fase-01/README.md) e o README de
+  cada projeto.
 
 ## Estrutura do repositório
 
 ```
 postech/
-├── README.md                 # este índice
+├── README.md                     # este índice
 ├── .gitignore
 └── fase-01/
-    ├── README.md             # índice da fase
-    ├── relatorio/            # entregável oficial (Markdown → PDF)
-    └── restaurantes/         # aplicação Spring Boot
+    ├── README.md                 # índice da fase
+    ├── camadas/
+    │   └── restaurantes/         # aplicação Spring Boot (arquitetura em camadas)
+    ├── hexagonal/
+    │   └── restaurantes/         # aplicação Spring Boot (arquitetura hexagonal)
+    └── relatorios/               # entregáveis oficiais (Markdown → PDF)
+        ├── camadas/
+        └── hexagonal/
 ```

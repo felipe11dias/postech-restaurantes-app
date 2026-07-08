@@ -131,5 +131,8 @@ mvn test
 ## Estrutura
 
 Arquitetura em camadas: `controller` → `service` → `repository`, com `entity`/`enums` no
-domínio e `vo` (Value Objects versionados) nos contratos da API. Detalhes no relatório
-técnico da fase.
+domínio e `vo` (Value Objects versionados) nos contratos da API. Detalhes no
+[relatório técnico da fase](../../relatorios/camadas/relatorio-tech-challenge-fase01-v1.1.md).
+
+> Esta é a variante **em camadas**. A mesma Fase 1 também é implementada com
+> [arquitetura hexagonal](../../hexagonal/restaurantes/) como desafio de estudo.
