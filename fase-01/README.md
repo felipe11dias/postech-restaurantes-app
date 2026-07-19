@@ -13,8 +13,8 @@ comparar as abordagens sobre o mesmo conjunto de requisitos:
 
 | Variante | Pasta | Arquitetura | Status |
 |----------|-------|-------------|--------|
-| **Camadas** | [`camadas/restaurantes/`](camadas/restaurantes/) | Em camadas (`controller` → `service` → `repository`), SOLID + Clean Code | ✅ completo |
-| **Hexagonal** | [`hexagonal/restaurantes/`](hexagonal/restaurantes/) | Ports & Adapters (domínio isolado de framework) | 🔄 Etapa 1 (scaffold) |
+| **Camadas** — entregável oficial | [`camadas/restaurantes/`](camadas/restaurantes/) | Em camadas (`controller` → `service` → `repository`), SOLID + Clean Code | ✅ completo |
+| **Hexagonal** — variante comparativa | [`hexagonal/restaurantes/`](hexagonal/restaurantes/) | Ports & Adapters (domínio isolado de framework) | 🔄 Etapa 1 (scaffold) |
 
 Os relatórios técnicos (entregável oficial de cada variante) ficam em
 [`relatorios/`](relatorios/), com um subdiretório por arquitetura.

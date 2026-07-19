@@ -30,8 +30,20 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
       JWT_SECRET: ${JWT_SECRET:-troque-este-segredo-por-um-valor-grande-de-no-minimo-256-bits}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-3600000}
+      # Default aponta para um SMTP local rodando no host (fora do container) —
+      # útil para testar a recuperação de senha sem credenciais reais.
+      MAIL_HOST: ${MAIL_HOST:-host.docker.internal}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-false}
+      MAIL_FROM: ${MAIL_FROM:-no-reply@restaurantes.postech}
+      MAIL_RESET_TOKEN_EXPIRATION_MINUTES: ${MAIL_RESET_TOKEN_EXPIRATION_MINUTES:-30}
     ports:
       - "8080:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 volumes:
   postgres_data:

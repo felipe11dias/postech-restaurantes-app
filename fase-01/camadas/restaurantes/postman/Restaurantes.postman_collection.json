@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Restaurantes — Tech Challenge Fase 1",
-    "description": "Coleção de testes da API de gestão de usuários. Fluxo recomendado (execute de cima para baixo): 1) Autenticação > Login admin salva {{adminToken}}; 2) Usuários > Cadastro válido salva {{userId}}; 3) Login do usuário criado salva {{token}}. A API aplica autorização por posse: um usuário só acessa o próprio {id}; ROLE_ADMIN acessa qualquer um.",
+    "description": "Coleção de testes da API de gestão de usuários. Fluxo recomendado (execute de cima para baixo): 1) Autenticação > Login admin salva {{adminToken}}; 2) Recuperação de Senha > Cadastro para teste salva {{resetUserId}}; 3) Usuários > Cadastro válido salva {{userId}}; 4) Login do usuário criado salva {{token}}. A API aplica autorização por posse: um usuário só acessa o próprio {id}; ROLE_ADMIN acessa qualquer um. O caso de sucesso da redefinição de senha depende do token bruto enviado por e-mail (nunca retornado pela API) — veja a variável {{resetToken}}.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -77,6 +77,198 @@
               "mode": "raw",
               "raw": "{\n  \"login\": \"admin.demo\",\n  \"password\": \"senhaErrada\"\n}"
             }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Recuperação de Senha",
+      "item": [
+        {
+          "name": "Cadastro para teste de recuperação (201) — salva resetUserId",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('resetUserId', json.id);",
+                  "  console.log('resetUserId salvo: ' + json.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Maria Recuperação\",\n  \"email\": \"maria.reset@email.com\",\n  \"login\": \"maria.reset\",\n  \"password\": \"senhaAntiga123\",\n  \"roles\": [\n    \"ROLE_CUSTOMER\"\n  ],\n  \"addresses\": []\n}"
+            },
+            "description": "Usuário dedicado a este fluxo, para não interferir com os demais cenários."
+          }
+        },
+        {
+          "name": "Esqueci minha senha — e-mail existente (202)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/forgot-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "forgot-password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"maria.reset@email.com\"\n}"
+            },
+            "description": "Gera e envia por e-mail um token de redefinição de uso único. A API não retorna o token na resposta; para o cenário de sucesso abaixo, defina a variável de coleção {{resetToken}} com o valor recebido por e-mail (ou logado pela aplicação) antes de executar a requisição 'Redefinir senha — sucesso'."
+          }
+        },
+        {
+          "name": "Esqueci minha senha — e-mail inexistente (202)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/forgot-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "forgot-password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nao.cadastrado@email.com\"\n}"
+            },
+            "description": "Resposta idêntica ao caso de e-mail existente (202) — a API não revela quais e-mails estão cadastrados."
+          }
+        },
+        {
+          "name": "Redefinir senha — token inválido (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "reset-password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"token-inexistente-ou-expirado\",\n  \"newPassword\": \"senhaNova456\",\n  \"confirmPassword\": \"senhaNova456\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Redefinir senha — senhas não coincidem (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "reset-password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"qualquer-token\",\n  \"newPassword\": \"senhaNova456\",\n  \"confirmPassword\": \"senhaDiferente789\"\n}"
+            },
+            "description": "A confirmação é conferida antes da validação do token, então qualquer valor de token dispara o mesmo erro 400."
+          }
+        },
+        {
+          "name": "Redefinir senha — sucesso (204)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "reset-password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"senhaNova456\",\n  \"confirmPassword\": \"senhaNova456\"\n}"
+            },
+            "description": "Requer a variável de coleção {{resetToken}} preenchida com o token bruto recebido por e-mail na requisição 'Esqueci minha senha — e-mail existente'."
           }
         }
       ]
@@ -677,6 +869,14 @@
     },
     {
       "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "resetUserId",
+      "value": ""
+    },
+    {
+      "key": "resetToken",
       "value": ""
     }
   ]

@@ -1,4 +1,10 @@
-# Sistema de Gestão de Restaurantes — Tech Challenge Fase 1
+# Sistema de Gestão de Restaurantes — Tech Challenge Fase 1 (Arquitetura em Camadas)
+
+Parte do monorepo [`postech`](../../../README.md) ▸ [Fase 1](../../README.md). Implementação
+da **Fase 1** do Tech Challenge sob **arquitetura em camadas** (`controller` → `service` →
+`repository`, SOLID + Clean Code) — esta é a **variante entregável oficial** da fase, com uma
+variante comparativa em [Arquitetura Hexagonal](../../hexagonal/restaurantes/) (Ports &
+Adapters, em andamento).
 
 Backend em Spring Boot para gestão de usuários (donos de restaurante e clientes), com
 autenticação JWT, banco PostgreSQL e orquestração via Docker Compose.
@@ -8,7 +14,7 @@ autenticação JWT, banco PostgreSQL e orquestração via Docker Compose.
 - Java 21 · Spring Boot 3.5.x
 - Spring Web, Spring Data JPA, Spring Validation, Spring Security
 - PostgreSQL 16 · Flyway (migrations)
-- springdoc-openapi (Swagger) · jjwt (JWT)
+- springdoc-openapi (Swagger) · jjwt (JWT) · Spring Mail (recuperação de senha)
 - MapStruct · Lombok · Spring HATEOAS · Spring Boot Actuator
 - JUnit 5 · Mockito · ArchUnit
 
@@ -50,6 +56,19 @@ docker compose down -v
 | `DB_PORT` | `5432` | Porta do banco |
 | `JWT_SECRET` | *(exemplo)* | Segredo do JWT (mín. 256 bits) |
 | `JWT_EXPIRATION` | `3600000` | Expiração do token (ms) |
+| `MAIL_HOST` | `localhost` | Host do servidor SMTP |
+| `MAIL_PORT` | `1025` | Porta do servidor SMTP |
+| `MAIL_USERNAME` | *(vazio)* | Usuário SMTP (se o servidor exigir auth) |
+| `MAIL_PASSWORD` | *(vazio)* | Senha SMTP (se o servidor exigir auth) |
+| `MAIL_SMTP_AUTH` | `false` | Habilita autenticação SMTP |
+| `MAIL_SMTP_STARTTLS` | `false` | Habilita STARTTLS |
+| `MAIL_FROM` | `no-reply@restaurantes.postech` | Remetente dos e-mails |
+| `MAIL_RESET_TOKEN_EXPIRATION_MINUTES` | `30` | Validade do token de redefinição de senha |
+
+Os defaults de `MAIL_*` apontam para um SMTP local descartável (ex.: `python -m smtpd -c
+DebuggingServer -n localhost:1025`), útil para testar a recuperação de senha sem credenciais
+reais. Para um provedor real (Gmail, Mailtrap etc.), configure host/porta/usuário/senha e
+habilite `MAIL_SMTP_AUTH`/`MAIL_SMTP_STARTTLS` conforme o provedor.
 
 ## Autenticação e autorização
 
@@ -58,6 +77,14 @@ A API é stateless e protegida por JWT. Fluxo:
 1. Cadastre um usuário em `POST /api/v1/users` (público).
 2. Autentique em `POST /api/v1/auth/login` para receber um token.
 3. Envie o token nas demais chamadas: `Authorization: Bearer <token>`.
+
+**Recuperação de senha (sem precisar da senha anterior):**
+
+1. `POST /api/v1/auth/forgot-password` com o e-mail cadastrado — sempre responde `202`,
+   exista ou não o e-mail (evita revelar quais e-mails estão cadastrados). Se existir, um
+   token de uso único (validade configurável) é gerado e enviado por e-mail.
+2. `POST /api/v1/auth/reset-password` com o token recebido e a nova senha — responde `204`
+   em caso de sucesso, ou `400` se o token for inválido/expirado/já usado.
 
 **Regras de autorização:**
 
@@ -73,6 +100,8 @@ A API é stateless e protegida por JWT. Fluxo:
 | Método | Rota | Descrição | Autorização |
 |--------|------|-----------|-------------|
 | `POST` | `/api/v1/auth/login` | Validação de login (retorna JWT) | Pública |
+| `POST` | `/api/v1/auth/forgot-password` | Solicita recuperação de senha por e-mail | Pública |
+| `POST` | `/api/v1/auth/reset-password` | Redefine a senha a partir do token recebido | Pública |
 | `POST` | `/api/v1/users` | Cadastro de usuário | Pública (sem `ROLE_ADMIN`) |
 | `GET` | `/api/v1/users/{id}` | Consulta por id | Dono ou `ROLE_ADMIN` |
 | `GET` | `/api/v1/users?name=...` | Busca paginada por nome | Autenticado |
@@ -90,8 +119,15 @@ Com a aplicação no ar: `http://localhost:8080/swagger-ui.html`
 
 Em `postman/Restaurantes.postman_collection.json`. Importe no Postman e execute de cima
 para baixo: **Autenticação > Login admin** (salva `{{adminToken}}`), depois
+**Recuperação de Senha > Cadastro para teste de recuperação** (salva `{{resetUserId}}`) e
 **Usuários > Cadastro válido** (salva `{{userId}}`) e **Login do usuário criado** (salva
 `{{token}}`). Os cenários de posse (`403`) e de admin (`200`/`404`) já vêm cobertos.
+
+O caso de sucesso da redefinição de senha (**Recuperação de Senha > Redefinir senha —
+sucesso**) depende da variável `{{resetToken}}`: como a API nunca retorna o token na resposta
+(ele só vai por e-mail), copie o valor recebido — ou logado pela aplicação em INFO — após
+executar **Esqueci minha senha — e-mail existente**, e cole em `{{resetToken}}` antes de rodar
+a requisição de sucesso.
 
 ## Migrations e seeds (Flyway)
 

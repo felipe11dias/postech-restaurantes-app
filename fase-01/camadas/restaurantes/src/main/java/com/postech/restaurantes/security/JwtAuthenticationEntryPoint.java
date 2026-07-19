@@ -1,6 +1,7 @@
 package com.postech.restaurantes.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.postech.restaurantes.exception.ProblemType;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
@@ -11,6 +12,7 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.net.URI;
 import java.time.Instant;
 
 /**
@@ -32,6 +34,7 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
                          AuthenticationException authException) throws IOException {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.UNAUTHORIZED, "Autenticação necessária para acessar este recurso");
+        problem.setType(URI.create(ProblemType.NAO_AUTENTICADO));
         problem.setTitle("Não autenticado");
         problem.setProperty("timestamp", Instant.now());
 

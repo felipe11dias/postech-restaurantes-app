@@ -24,8 +24,8 @@ lado:
 
 | Variante | Código-fonte | Relatório | Status |
 |----------|--------------|-----------|--------|
-| **Em camadas** (SOLID + Clean Code) | [`fase-01/camadas/restaurantes/`](fase-01/camadas/restaurantes/) | [`fase-01/relatorios/camadas/`](fase-01/relatorios/camadas/) | ✅ completo |
-| **Hexagonal** (Ports & Adapters) | [`fase-01/hexagonal/restaurantes/`](fase-01/hexagonal/restaurantes/) | [`fase-01/relatorios/hexagonal/`](fase-01/relatorios/hexagonal/) | 🔄 Etapa 1 (scaffold) |
+| **Em camadas** (SOLID + Clean Code) — entregável oficial | [`fase-01/camadas/restaurantes/`](fase-01/camadas/restaurantes/) | [`fase-01/relatorios/camadas/`](fase-01/relatorios/camadas/) | ✅ completo |
+| **Hexagonal** (Ports & Adapters) — variante comparativa | [`fase-01/hexagonal/restaurantes/`](fase-01/hexagonal/restaurantes/) | [`fase-01/relatorios/hexagonal/`](fase-01/relatorios/hexagonal/) | 🔄 Etapa 1 (scaffold) |
 
 - **Como executar / detalhes:** ver [`fase-01/README.md`](fase-01/README.md) e o README de
   cada projeto.
