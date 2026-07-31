@@ -142,6 +142,10 @@ subir a aplicação. O Hibernate roda em `validate` (não altera o banco).
 | `V1__create_initial_schema.sql` | Tabelas + seed dos papéis (`ROLE_OWNER`, `ROLE_CUSTOMER`, `ROLE_ADMIN`) |
 | `V2__seed_demo_users.sql` | Usuários de demonstração (dono e cliente) com papéis e endereços |
 | `V3__seed_admin_user.sql` | Usuário administrador de demonstração (`ROLE_ADMIN`) |
+| `V4__create_password_reset_tokens.sql` | Tabela `password_reset_tokens` (recuperação de senha por e-mail) |
+| `V5__add_audit_columns.sql` | Colunas de auditoria (`created_by`/`last_updated_by`/`created_at`/`last_updated_at`) em todas as tabelas |
+
+Histórico detalhado de cada migration: [`CHANGELOG.md`](CHANGELOG.md).
 
 **Usuários de demonstração** (para testar o login de imediato):
 
@@ -154,6 +158,19 @@ subir a aplicação. O Hibernate roda em `validate` (não altera o banco).
 **Criar uma nova migration:** adicione `V<n>__descricao.sql` (próximo número) em
 `db/migration` e suba a aplicação. Migrations já aplicadas são **imutáveis** — nunca
 edite uma existente; crie uma nova. O histórico fica na tabela `flyway_schema_history`.
+Toda migration nova deve ganhar uma entrada no [`CHANGELOG.md`](CHANGELOG.md).
+
+## Auditoria
+
+Todas as entidades (`User`, `Role`, `Address`, `PasswordResetToken`) estendem a classe
+base `Auditable` e são auditadas automaticamente via **Spring Data JPA Auditing**
+(`@EnableJpaAuditing`, `@CreatedDate`, `@LastModifiedDate`, `@CreatedBy`,
+`@LastModifiedBy`), preenchendo em toda escrita:
+
+- `created_at` / `last_updated_at`: data/hora de criação e da última alteração.
+- `created_by` / `last_updated_by`: login do usuário autenticado no momento da escrita
+  (via `SecurityContextHolder`, no bean `SpringSecurityAuditorAware`), ou `"system"`
+  quando não há usuário autenticado (ex.: auto-cadastro público, seeds).
 
 ## Testes
 
@@ -163,6 +180,8 @@ mvn test
 
 - **ArchUnit** (`ArchitectureTest`): valida as regras da arquitetura em camadas.
 - **JUnit + Mockito** (`UserServiceTest`): cobre as regras de negócio do serviço de usuário.
+- **JUnit** (`SpringSecurityAuditorAwareTest`): cobre a resolução do auditor
+  (usuário autenticado, contexto anônimo e ausência de autenticação).
 
 ## Estrutura
 

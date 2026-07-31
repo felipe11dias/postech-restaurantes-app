@@ -2,6 +2,26 @@
 
 Histórico de versões do relatório. Formato: versão · data · mudanças.
 
+## v1.2
+- **Auditoria (JPA):** todas as entidades (`User`, `Role`, `Address`,
+  `PasswordResetToken`) passam a estender uma classe base `Auditable` e são
+  auditadas via Spring Data JPA Auditing (`@EnableJpaAuditing`, `@CreatedDate`,
+  `@LastModifiedDate`, `@CreatedBy`, `@LastModifiedBy`), substituindo os antigos
+  `@PrePersist`/`@PreUpdate` manuais. `created_by`/`last_updated_by` vêm de um
+  `AuditorAware<String>` que lê o login autenticado via `SecurityContextHolder`,
+  com fallback `"system"` — inclusive quando o contexto traz o token anônimo do
+  Spring Security (endpoints públicos), evitando gravar `"anonymousUser"`.
+  Documentado na Etapa 2 (Auditoria) e refletido no diagrama ER.
+- Novo teste unitário `SpringSecurityAuditorAwareTest` cobrindo os três cenários
+  de resolução do auditor (Etapa 12).
+- Nova migration `V5__add_audit_columns.sql` (colunas de auditoria em todas as
+  tabelas) e `V4__create_password_reset_tokens.sql` (que já existia mas nunca
+  havia sido documentada) — tabela de migrations da Etapa 3 atualizada.
+- Diagrama ER e tabela de tabelas do modelo (Etapa 2) passam a incluir
+  `password_reset_tokens`.
+- Novo `CHANGELOG.md` na raiz do módulo `camadas/restaurantes`, documentando o
+  histórico das migrations Flyway (`V1`–`V5`).
+
 ## v1.1
 - **Segurança — autorização por posse (IDOR):** operações por id
   (`GET/PUT/PATCH/DELETE /users/{id}`) passam a exigir ser o dono do recurso ou `ROLE_ADMIN`

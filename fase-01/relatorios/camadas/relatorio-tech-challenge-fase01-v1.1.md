@@ -7,7 +7,7 @@
 
 **Curso:** Pós-Tech — Arquitetura e Desenvolvimento Java
 **Stack:** Java 21 · Spring Boot 3.5.x · PostgreSQL · Docker
-**Versão do relatório:** 1.1
+**Versão do relatório:** 1.2
 
 > Documento vivo, organizado pelas etapas de desenvolvimento. Cada etapa do Sumário de
 > Progresso abaixo corresponde a uma seção homônima neste relatório.
@@ -183,6 +183,7 @@ autorização com Spring Security.
 | `roles` | Entidade forte (lookup) | Papéis de autorização |
 | `user_roles` | Tabela associativa | Resolve o N:M entre usuários e papéis |
 | `addresses` | Entidade | Endereços do usuário (1:N) |
+| `password_reset_tokens` | Entidade | Tokens de uso único para redefinição de senha (1:N com `users`) |
 
 ### Relacionamentos e cardinalidade
 
@@ -190,10 +191,11 @@ autorização com Spring Security.
 |----------------|---------------|---------------|
 | `users` ↔ `addresses` | 1 : N | FK `addresses.user_id` (`@OneToMany`/`@ManyToOne`) |
 | `users` ↔ `roles` | N : M | Tabela `user_roles` (`@ManyToMany` + `@JoinTable`) |
+| `users` ↔ `password_reset_tokens` | 1 : N | FK `password_reset_tokens.user_id` (`@ManyToOne`) |
 
-Regras de integridade referencial: `addresses.user_id` e as FKs de `user_roles` usam
-`ON DELETE CASCADE` — remover um usuário remove seus endereços e seus vínculos de papel,
-sem deixar registros órfãos.
+Regras de integridade referencial: `addresses.user_id`, `password_reset_tokens.user_id` e
+as FKs de `user_roles` usam `ON DELETE CASCADE` — remover um usuário remove seus endereços,
+seus tokens de redefinição de senha e seus vínculos de papel, sem deixar registros órfãos.
 
 ### Justificativa da normalização
 
@@ -220,13 +222,27 @@ usuário via `user_roles`. Essa escolha:
 3. Permite que um usuário acumule papéis (ex.: um dono que também é cliente) sem alteração
    de schema, diferentemente de um enum de coluna única.
 
-### Data de criação e última alteração
+### Auditoria
 
-A entidade `User` registra `created_at` (imutável) e `last_updated_at`, ambos preenchidos
-por *callbacks* de ciclo de vida do JPA: `@PrePersist` define os dois na criação e
-`@PreUpdate` atualiza `last_updated_at` em qualquer modificação — atendendo ao requisito
-"registro da data da última alteração". Tipo usado: `LocalDateTime` (API moderna de
-data/hora do Java, em vez do legado `java.util.Date`).
+Todas as entidades (`User`, `Role`, `Address`, `PasswordResetToken`) estendem a classe
+base `Auditable` (`@MappedSuperclass` + `@EntityListeners(AuditingEntityListener.class)`)
+e são auditadas automaticamente via **Spring Data JPA Auditing**
+(`@EnableJpaAuditing`), registrando em toda escrita:
+
+- `created_at` (imutável) / `last_updated_at`, via `@CreatedDate`/`@LastModifiedDate` —
+  atendendo ao requisito "registro da data da última alteração". Tipo usado:
+  `LocalDateTime` (API moderna de data/hora do Java, em vez do legado `java.util.Date`).
+- `created_by` (imutável) / `last_updated_by`, via `@CreatedBy`/`@LastModifiedBy` —
+  registram **quem** criou/alterou o registro.
+
+Essa abordagem substitui os antigos *callbacks* manuais de ciclo de vida do JPA
+(`@PrePersist`/`@PreUpdate`), que existiam apenas em `User` (datas) e `PasswordResetToken`
+(só `created_at`), por um mecanismo declarativo único e uniforme entre todas as entidades.
+
+O valor de `created_by`/`last_updated_by` vem de um `AuditorAware<String>`
+(`SpringSecurityAuditorAware`) que lê o login do usuário autenticado em
+`SecurityContextHolder` — mesmo padrão de leitura já usado em `UserSecurity.isSelf` — e
+cai para `"system"` quando não há usuário autenticado (auto-cadastro público, seeds SQL).
 
 ### Diagrama Entidade-Relacionamento
 
@@ -234,6 +250,7 @@ data/hora do Java, em vez do legado `java.util.Date`).
 erDiagram
     USERS ||--o{ ADDRESSES : possui
     USERS ||--o{ USER_ROLES : tem
+    USERS ||--o{ PASSWORD_RESET_TOKENS : solicita
     ROLES ||--o{ USER_ROLES : participa
     USERS {
         bigint id PK
@@ -243,10 +260,16 @@ erDiagram
         varchar password
         timestamp created_at
         timestamp last_updated_at
+        varchar created_by
+        varchar last_updated_by
     }
     ROLES {
         bigint id PK
         varchar name UK
+        timestamp created_at
+        timestamp last_updated_at
+        varchar created_by
+        varchar last_updated_by
     }
     USER_ROLES {
         bigint user_id PK_FK
@@ -262,6 +285,21 @@ erDiagram
         varchar city
         varchar state
         varchar zip_code
+        timestamp created_at
+        timestamp last_updated_at
+        varchar created_by
+        varchar last_updated_by
+    }
+    PASSWORD_RESET_TOKENS {
+        bigint id PK
+        bigint user_id FK
+        varchar token_hash UK
+        timestamp expires_at
+        boolean used
+        timestamp created_at
+        timestamp last_updated_at
+        varchar created_by
+        varchar last_updated_by
     }
 ```
 
@@ -330,6 +368,8 @@ entidades batem com o schema criado pelas migrations.
 | V1 | `V1__create_initial_schema.sql` | DDL das tabelas (`users`, `roles`, `user_roles`, `addresses`) + **seed dos papéis** (`ROLE_OWNER`, `ROLE_CUSTOMER`, `ROLE_ADMIN`) |
 | V2 | `V2__seed_demo_users.sql` | **Seed de usuários de demonstração**: um dono e um cliente, com papéis e endereços |
 | V3 | `V3__seed_admin_user.sql` | **Seed do usuário administrador** (`ROLE_ADMIN`), usado nos cenários de escopo administrativo |
+| V4 | `V4__create_password_reset_tokens.sql` | DDL da tabela `password_reset_tokens`, para o fluxo de recuperação de senha por e-mail |
+| V5 | `V5__add_audit_columns.sql` | Colunas de auditoria (`created_by`/`last_updated_by`/`created_at`/`last_updated_at`) em todas as tabelas, suportando a auditoria JPA (Etapa 2) |
 
 ### Seeds
 
@@ -772,6 +812,14 @@ do serviço de usuário, com os repositórios, o encoder e os mapeadores mockado
 - troca de senha com confirmação divergente → `InvalidPasswordException`;
 - consulta/exclusão de id inexistente → `ResourceNotFoundException`;
 - busca por nome.
+
+**Testes unitários (JUnit 5) — `SpringSecurityAuditorAwareTest`.** Cobrem a resolução do
+auditor usado pela auditoria JPA (Etapa 2), manipulando o `SecurityContextHolder`:
+
+- contexto sem `Authentication` → audita como `"system"`;
+- contexto com `AnonymousAuthenticationToken` (endpoints públicos, como o auto-cadastro)
+  → audita como `"system"`, e não como `"anonymousUser"`;
+- usuário autenticado → audita com o login.
 
 Execução: `mvn test`.
 
