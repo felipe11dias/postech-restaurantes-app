@@ -22,8 +22,6 @@ public interface UserMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "password", ignore = true)
     @Mapping(target = "roles", ignore = true)
-    @Mapping(target = "createdAt", ignore = true)
-    @Mapping(target = "lastUpdatedAt", ignore = true)
     User toEntity(UserRegistrationRequest request);
 
     UserResponse toResponse(User user);
