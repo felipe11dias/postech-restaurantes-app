@@ -2,6 +2,40 @@
 
 Histórico de versões do relatório. Formato: versão · data · mudanças.
 
+## v2.0
+- **Identificadores sequenciais → UUID:** todas as chaves primárias (e as estrangeiras que
+  as referenciam) passam de `BIGINT GENERATED ALWAYS AS IDENTITY` para `UUID`, gerado pelo
+  banco via `DEFAULT gen_random_uuid()`. Motivação: ids sequenciais expostos nas rotas
+  permitiam enumeração de recursos. Nova migration `V6__convert_ids_to_uuid.sql`, que traduz
+  os vínculos existentes antes de descartar as colunas antigas (seeds preservados).
+  Documentado nas Etapas 2 e 3.
+- **Spring Data JPA → JDBC:** o ORM foi removido. Cada repositório passa a ser uma interface
+  com implementação em `JdbcTemplate` e SQL escrito à mão. Cascade, `orphanRemoval`, o N:M de
+  papéis, o carregamento das associações (evitando N+1) e a auditoria tornam-se explícitos.
+  `Address` e `PasswordResetToken` passam a referenciar o usuário por id. Etapa 4 reescrita.
+- **Remoção do Lombok:** entidades com construtores, getters, setters e builder escritos à
+  mão; `MailServiceImpl` com logger via `LoggerFactory`. O builder foi preservado por
+  convenção para que o MapStruct continuasse gerando os mapeadores sem alteração.
+  Documentado na Etapa 5.
+- **Segurança — ordenação da listagem:** o nome da coluna do `ORDER BY` não é parametrizável
+  em SQL, então passou a vir de uma lista fixa de propriedades permitidas, e nunca direto da
+  requisição. Documentado na Etapa 4.
+- **Segurança — senha fora da listagem:** a consulta paginada deixou de ler a coluna
+  `password`. `findById`/`findByLogin` continuam lendo, pois alimentam a gravação e a
+  autenticação. Documentado na Etapa 4.
+- **Correção:** parâmetro de rota malformado (`{id}` que não é UUID) passa a retornar `400`
+  em vez de `500`, via tratamento de `MethodArgumentTypeMismatchException`. Etapa 9.
+- Auditoria deixa de ser automática (o `AuditingEntityListener` era um recurso do ORM) e
+  passa a ser aplicada pelos repositórios; `SpringSecurityAuditorAware` vira `AuditorProvider`
+  e o teste correspondente vira `AuditorProviderTest`. Etapas 2 e 12.
+- Regra de ArchUnit `repositories_sao_interfaces` ajustada para admitir as implementações
+  `*Jdbc`, preservando a intenção original. Etapas 4 e 12.
+- Coleção Postman: quatro requests com ids numéricos fixos (cenários de 403 e 404) ajustados
+  para UUID. Etapa 13.
+- Registradas como **pendências** a ausência de teste automatizado sobre o SQL escrito à mão
+  (com o detalhamento da verificação manual realizada em seu lugar) e os prints da coleção
+  Postman desatualizados. Etapas 12 e 13.
+
 ## v1.2
 - **Auditoria (JPA):** todas as entidades (`User`, `Role`, `Address`,
   `PasswordResetToken`) passam a estender uma classe base `Auditable` e são
