@@ -39,8 +39,27 @@ import java.util.stream.Collectors;
 @Repository
 public class UserRepositoryJdbc implements UserRepository {
 
-    private static final String COLUNAS =
-            "id, name, email, login, password, created_at, last_updated_at, created_by, last_updated_by";
+    private static final String COLUNAS_BASE =
+            "id, name, email, login, created_at, last_updated_at, created_by, last_updated_by";
+
+    /**
+     * Colunas das buscas que devolvem um único usuário.
+     *
+     * Estas precisam do hash da senha: findByLogin alimenta a autenticação, e o
+     * resultado de findById é devolvido ao save — que reescreve a coluna
+     * password. Carregar o usuário sem o hash e salvá-lo em seguida apagaria a
+     * senha, então este par (leitura completa + gravação completa) anda junto.
+     */
+    private static final String COLUNAS = COLUNAS_BASE + ", password";
+
+    /**
+     * Colunas da listagem paginada.
+     *
+     * Sem o hash da senha: nenhum consumidor precisa dele (o UserResponse não o
+     * expõe e a página nunca é gravada de volta), e trazê-lo colocaria o hash de
+     * todos os usuários da página em memória sem motivo.
+     */
+    private static final String COLUNAS_LISTAGEM = COLUNAS_BASE;
 
     /**
      * Propriedades aceitas em ?sort=... mapeadas para colunas reais.
@@ -146,10 +165,10 @@ public class UserRepositoryJdbc implements UserRepository {
                 .addValue("deslocamento", pageable.getOffset());
 
         List<User> usuarios = jdbc.query(
-                "SELECT " + COLUNAS + " FROM users" + filtro
+                "SELECT " + COLUNAS_LISTAGEM + " FROM users" + filtro
                         + " ORDER BY " + ordenacao(pageable.getSort())
                         + " LIMIT :limite OFFSET :deslocamento",
-                paginacao, this::mapearUsuario);
+                paginacao, this::mapearUsuarioSemSenha);
 
         return new PageImpl<>(carregarAssociacoes(usuarios), pageable, total);
     }
@@ -205,13 +224,20 @@ public class UserRepositoryJdbc implements UserRepository {
         return usuarios;
     }
 
+    /** Mapeia o usuário incluindo o hash da senha (consultas com COLUNAS). */
     private User mapearUsuario(ResultSet rs, int linha) throws SQLException {
+        User usuario = mapearUsuarioSemSenha(rs, linha);
+        usuario.setPassword(rs.getString("password"));
+        return usuario;
+    }
+
+    /** Mapeia o usuário sem o hash da senha (consultas com COLUNAS_LISTAGEM). */
+    private User mapearUsuarioSemSenha(ResultSet rs, int linha) throws SQLException {
         User usuario = new User();
         usuario.setId(rs.getObject("id", UUID.class));
         usuario.setName(rs.getString("name"));
         usuario.setEmail(rs.getString("email"));
         usuario.setLogin(rs.getString("login"));
-        usuario.setPassword(rs.getString("password"));
         restaurarAuditoria(usuario, rs);
         return usuario;
     }
