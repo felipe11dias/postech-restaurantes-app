@@ -1,8 +1,10 @@
-package com.postech.restaurantes.controller;
+package com.postech.restaurantes.assembler;
 
+import com.postech.restaurantes.controller.UserController;
 import com.postech.restaurantes.vo.v1.response.UserResponse;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.server.RepresentationModelAssembler;
+import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
 import org.springframework.stereotype.Component;
 
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
@@ -20,7 +22,7 @@ public class UserModelAssembler
     @Override
     public EntityModel<UserResponse> toModel(UserResponse user) {
         return EntityModel.of(user,
-                linkTo(methodOn(UserController.class).findById(user.id())).withSelfRel(),
+                WebMvcLinkBuilder.linkTo(methodOn(UserController.class).findById(user.id())).withSelfRel(),
                 linkTo(UserController.class).withRel("users"));
     }
 }

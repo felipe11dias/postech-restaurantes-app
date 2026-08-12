@@ -1,5 +1,6 @@
 package com.postech.restaurantes.controller;
 
+import com.postech.restaurantes.assembler.UserModelAssembler;
 import com.postech.restaurantes.service.UserService;
 import com.postech.restaurantes.vo.v1.request.PasswordChangeRequest;
 import com.postech.restaurantes.vo.v1.request.UserRegistrationRequest;
