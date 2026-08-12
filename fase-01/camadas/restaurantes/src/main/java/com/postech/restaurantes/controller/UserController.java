@@ -27,6 +27,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.UUID;
+
 /**
  * Endpoints de usuário, versionados sob /api/v1/users.
  * Cumpre os requisitos: cadastro, atualização de dados (endpoint distinto),
@@ -59,7 +61,7 @@ public class UserController {
 
     @GetMapping("/{id}")
     @PreAuthorize(OWNER_OR_ADMIN)
-    public EntityModel<UserResponse> findById(@PathVariable Long id) {
+    public EntityModel<UserResponse> findById(@PathVariable UUID id) {
         return assembler.toModel(userService.findById(id));
     }
 
@@ -82,7 +84,7 @@ public class UserController {
     /** Atualização das demais informações do usuário (endpoint distinto da senha). */
     @PutMapping("/{id}")
     @PreAuthorize(OWNER_OR_ADMIN)
-    public EntityModel<UserResponse> update(@PathVariable Long id,
+    public EntityModel<UserResponse> update(@PathVariable UUID id,
                                             @Valid @RequestBody UserUpdateRequest request) {
         return assembler.toModel(userService.update(id, request));
     }
@@ -90,7 +92,7 @@ public class UserController {
     /** Troca de senha (endpoint exclusivo). */
     @PatchMapping("/{id}/password")
     @PreAuthorize(OWNER_OR_ADMIN)
-    public ResponseEntity<Void> changePassword(@PathVariable Long id,
+    public ResponseEntity<Void> changePassword(@PathVariable UUID id,
                                                @Valid @RequestBody PasswordChangeRequest request) {
         userService.changePassword(id, request);
         return ResponseEntity.noContent().build();
@@ -98,7 +100,7 @@ public class UserController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize(OWNER_OR_ADMIN)
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
         userService.delete(id);
         return ResponseEntity.noContent().build();
     }

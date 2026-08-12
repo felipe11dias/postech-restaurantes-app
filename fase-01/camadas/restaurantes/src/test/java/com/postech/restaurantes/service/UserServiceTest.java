@@ -28,6 +28,7 @@ import org.springframework.data.domain.Pageable;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -39,6 +40,11 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("UserService — regras de negócio de usuário")
 class UserServiceTest {
+
+    private static final UUID USER_ID = UUID.fromString("11111111-1111-4111-8111-111111111111");
+    private static final UUID OTHER_USER_ID = UUID.fromString("22222222-2222-4222-8222-222222222222");
+    private static final UUID MISSING_USER_ID = UUID.fromString("33333333-3333-4333-8333-333333333333");
+    private static final UUID ROLE_ID = UUID.fromString("44444444-4444-4444-8444-444444444444");
 
     @Mock private UserRepository userRepository;
     @Mock private RoleRepository roleRepository;
@@ -59,7 +65,7 @@ class UserServiceTest {
     void register_comDadosValidos_devePersistir() {
         UserRegistrationRequest request = validRegistration();
         User entity = new User();
-        UserResponse expected = new UserResponse(1L, "João Silva", "joao@email.com",
+        UserResponse expected = new UserResponse(USER_ID, "João Silva", "joao@email.com",
                 "joao.silva", Set.of(), List.of(), null, null);
 
         when(userRepository.findByEmail("joao@email.com")).thenReturn(Optional.empty());
@@ -67,7 +73,7 @@ class UserServiceTest {
         when(userMapper.toEntity(request)).thenReturn(entity);
         when(passwordEncoder.encode("senhaSegura123")).thenReturn("HASHED");
         when(roleRepository.findByName(RoleName.ROLE_CUSTOMER))
-                .thenReturn(Optional.of(new Role(2L, RoleName.ROLE_CUSTOMER)));
+                .thenReturn(Optional.of(new Role(ROLE_ID, RoleName.ROLE_CUSTOMER)));
         when(userRepository.save(any(User.class))).thenAnswer(call -> call.getArgument(0));
         when(userMapper.toResponse(any(User.class))).thenReturn(expected);
 
@@ -97,7 +103,7 @@ class UserServiceTest {
     void register_comEmailDuplicado_deveLancar() {
         UserRegistrationRequest request = validRegistration();
         User existing = new User();
-        existing.setId(99L);
+        existing.setId(OTHER_USER_ID);
         when(userRepository.findByEmail("joao@email.com")).thenReturn(Optional.of(existing));
 
         assertThatThrownBy(() -> userService.register(request))
@@ -112,7 +118,7 @@ class UserServiceTest {
     void register_comLoginDuplicado_deveLancar() {
         UserRegistrationRequest request = validRegistration();
         User existing = new User();
-        existing.setId(99L);
+        existing.setId(OTHER_USER_ID);
         when(userRepository.findByEmail("joao@email.com")).thenReturn(Optional.empty());
         when(userRepository.findByLogin("joao.silva")).thenReturn(Optional.of(existing));
 
@@ -127,13 +133,13 @@ class UserServiceTest {
     @DisplayName("troca de senha com senha atual correta e confirmação coincidente")
     void changePassword_valido_deveAtualizar() {
         User user = new User();
-        user.setId(1L);
+        user.setId(USER_ID);
         user.setPassword("HASH_ANTIGO");
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("atual123", "HASH_ANTIGO")).thenReturn(true);
         when(passwordEncoder.encode("nova12345")).thenReturn("HASH_NOVO");
 
-        userService.changePassword(1L,
+        userService.changePassword(USER_ID,
                 new PasswordChangeRequest("atual123", "nova12345", "nova12345"));
 
         verify(passwordEncoder).encode("nova12345");
@@ -145,12 +151,12 @@ class UserServiceTest {
     @DisplayName("troca de senha falha quando a senha atual está incorreta")
     void changePassword_senhaAtualIncorreta_deveLancar() {
         User user = new User();
-        user.setId(1L);
+        user.setId(USER_ID);
         user.setPassword("HASH_ANTIGO");
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("errada", "HASH_ANTIGO")).thenReturn(false);
 
-        assertThatThrownBy(() -> userService.changePassword(1L,
+        assertThatThrownBy(() -> userService.changePassword(USER_ID,
                 new PasswordChangeRequest("errada", "nova12345", "nova12345")))
                 .isInstanceOf(InvalidPasswordException.class)
                 .hasMessageContaining("atual");
@@ -162,12 +168,12 @@ class UserServiceTest {
     @DisplayName("troca de senha falha quando a confirmação não coincide")
     void changePassword_confirmacaoDivergente_deveLancar() {
         User user = new User();
-        user.setId(1L);
+        user.setId(USER_ID);
         user.setPassword("HASH_ANTIGO");
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("atual123", "HASH_ANTIGO")).thenReturn(true);
 
-        assertThatThrownBy(() -> userService.changePassword(1L,
+        assertThatThrownBy(() -> userService.changePassword(USER_ID,
                 new PasswordChangeRequest("atual123", "nova12345", "diferente999")))
                 .isInstanceOf(InvalidPasswordException.class)
                 .hasMessageContaining("confirmação");
@@ -178,18 +184,18 @@ class UserServiceTest {
     @Test
     @DisplayName("consulta por id inexistente lança ResourceNotFound")
     void findById_inexistente_deveLancar() {
-        when(userRepository.findById(123L)).thenReturn(Optional.empty());
+        when(userRepository.findById(MISSING_USER_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> userService.findById(123L))
+        assertThatThrownBy(() -> userService.findById(MISSING_USER_ID))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test
     @DisplayName("exclusão de usuário inexistente lança ResourceNotFound")
     void delete_inexistente_deveLancar() {
-        when(userRepository.existsById(123L)).thenReturn(false);
+        when(userRepository.existsById(MISSING_USER_ID)).thenReturn(false);
 
-        assertThatThrownBy(() -> userService.delete(123L))
+        assertThatThrownBy(() -> userService.delete(MISSING_USER_ID))
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verify(userRepository, never()).deleteById(any());
@@ -203,7 +209,7 @@ class UserServiceTest {
         when(userRepository.findByNameContainingIgnoreCase("jo", pageable))
                 .thenReturn(new PageImpl<>(List.of(user)));
         when(userMapper.toResponse(user)).thenReturn(
-                new UserResponse(1L, "João", "joao@email.com", "joao", Set.of(), List.of(), null, null));
+                new UserResponse(USER_ID, "João", "joao@email.com", "joao", Set.of(), List.of(), null, null));
 
         Page<UserResponse> result = userService.findByName("jo", pageable);
 

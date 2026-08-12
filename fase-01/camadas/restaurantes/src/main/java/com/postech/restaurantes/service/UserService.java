@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -66,7 +67,7 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponse update(Long id, UserUpdateRequest request) {
+    public UserResponse update(UUID id, UserUpdateRequest request) {
         User user = findEntity(id);
         String email = new Email(request.email()).value();
 
@@ -91,7 +92,7 @@ public class UserService {
     }
 
     @Transactional
-    public void changePassword(Long id, PasswordChangeRequest request) {
+    public void changePassword(UUID id, PasswordChangeRequest request) {
         User user = findEntity(id);
 
         if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
@@ -106,7 +107,7 @@ public class UserService {
     }
 
     @Transactional
-    public void delete(Long id) {
+    public void delete(UUID id) {
         if (!userRepository.existsById(id)) {
             throw new ResourceNotFoundException("Usuário não encontrado: " + id);
         }
@@ -114,7 +115,7 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public UserResponse findById(Long id) {
+    public UserResponse findById(UUID id) {
         return userMapper.toResponse(findEntity(id));
     }
 
@@ -131,12 +132,12 @@ public class UserService {
 
     // ----- private -----
 
-    private User findEntity(Long id) {
+    private User findEntity(UUID id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + id));
     }
 
-    private void ensureEmailIsAvailable(String email, Long currentUserId) {
+    private void ensureEmailIsAvailable(String email, UUID currentUserId) {
         userRepository.findByEmail(email)
                 .filter(existing -> !existing.getId().equals(currentUserId))
                 .ifPresent(existing -> {
@@ -144,7 +145,7 @@ public class UserService {
                 });
     }
 
-    private void ensureLoginIsAvailable(String login, Long currentUserId) {
+    private void ensureLoginIsAvailable(String login, UUID currentUserId) {
         userRepository.findByLogin(login)
                 .filter(existing -> !existing.getId().equals(currentUserId))
                 .ifPresent(existing -> {

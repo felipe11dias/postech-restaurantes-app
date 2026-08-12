@@ -1,10 +1,12 @@
 package com.postech.restaurantes.vo.v1.response;
 
+import java.util.UUID;
+
 /**
  * VO de saída para endereço (v1).
  */
 public record AddressResponse(
-        Long id,
+        UUID id,
         String street,
         String number,
         String complement,

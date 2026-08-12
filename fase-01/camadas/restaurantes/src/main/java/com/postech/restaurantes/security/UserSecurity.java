@@ -4,6 +4,8 @@ import com.postech.restaurantes.repository.UserRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
+import java.util.UUID;
+
 /**
  * Suporte à autorização por posse do recurso. Exposto como bean "userSecurity"
  * para uso em expressões @PreAuthorize dos controllers.
@@ -21,7 +23,7 @@ public class UserSecurity {
     }
 
     /** True se o usuário autenticado é o dono do recurso identificado por {@code id}. */
-    public boolean isSelf(Long id, Authentication authentication) {
+    public boolean isSelf(UUID id, Authentication authentication) {
         if (id == null || authentication == null || !authentication.isAuthenticated()) {
             return false;
         }

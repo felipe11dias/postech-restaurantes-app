@@ -15,6 +15,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.UUID;
+
 /**
  * Papel de autorização. Os registros (ROLE_OWNER, ROLE_CUSTOMER, ROLE_ADMIN)
  * são carregados na inicialização (seed) e referenciados pelos usuários
@@ -31,7 +33,7 @@ public class Role extends Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private UUID id;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "name", nullable = false, unique = true, length = 50)

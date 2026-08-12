@@ -4,6 +4,15 @@ Histórico das migrations Flyway (`src/main/resources/db/migration`) do módulo
 `camadas/restaurantes`. Toda nova migration `V<n>__descricao.sql` deve ganhar uma
 entrada aqui.
 
+## V6 — `V6__convert_ids_to_uuid.sql`
+- Converte as chaves primárias de `users`, `roles`, `addresses` e
+  `password_reset_tokens` de `BIGINT` sequencial para `UUID`, gerado pelo banco
+  via `DEFAULT gen_random_uuid()`.
+- Converte junto as chaves estrangeiras que as referenciam (`user_roles`,
+  `addresses.user_id`, `password_reset_tokens.user_id`), preservando os vínculos
+  já cadastrados e o `ON DELETE CASCADE`.
+- Motivação: ids sequenciais expostos nas rotas permitiam enumeração de recursos.
+
 ## V5 — `V5__add_audit_columns.sql`
 - Adiciona `created_by` e `last_updated_by` a `users`.
 - Adiciona `created_at`, `last_updated_at`, `created_by` e `last_updated_by` a

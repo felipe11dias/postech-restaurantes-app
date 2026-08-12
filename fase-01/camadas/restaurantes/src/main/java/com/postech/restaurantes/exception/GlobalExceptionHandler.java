@@ -7,6 +7,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.net.URI;
 import java.time.Instant;
@@ -71,6 +72,18 @@ public class GlobalExceptionHandler {
                 .forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
         problem.setProperty("errors", errors);
         return problem;
+    }
+
+    /**
+     * Parâmetro de rota com formato incompatível — tipicamente um {id} que não é
+     * um UUID válido. Sem este tratamento a falha cairia no handler genérico (500),
+     * escondendo um erro que é do cliente.
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ProblemDetail handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        return build(HttpStatus.BAD_REQUEST, ProblemType.REQUISICAO_INVALIDA,
+                "Requisição inválida",
+                "O parâmetro '" + ex.getName() + "' está em formato inválido");
     }
 
     /** Falhas de validação dos VOs de valor (ex.: e-mail/CEP malformado). */

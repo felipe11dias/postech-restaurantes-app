@@ -15,6 +15,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.UUID;
+
 /**
  * Endereço de um usuário. Um usuário pode ter vários endereços (1:N),
  * por isso o endereço foi modelado como tabela própria (normalização),
@@ -31,7 +33,7 @@ public class Address extends Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private UUID id;
 
     @Column(name = "street", nullable = false)
     private String street;

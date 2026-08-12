@@ -621,7 +621,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/users/1",
+              "raw": "{{baseUrl}}/api/v1/users/{{resetUserId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -629,7 +629,7 @@
                 "api",
                 "v1",
                 "users",
-                "1"
+                "{{resetUserId}}"
               ]
             },
             "description": "O usuário comum (não dono do recurso) recebe 403 ao tentar acessar outro id."
@@ -650,7 +650,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/users/1",
+              "raw": "{{baseUrl}}/api/v1/users/{{userId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -658,7 +658,7 @@
                 "api",
                 "v1",
                 "users",
-                "1"
+                "{{userId}}"
               ]
             },
             "description": "ROLE_ADMIN acessa qualquer usuário."
@@ -711,7 +711,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/users/9999",
+              "raw": "{{baseUrl}}/api/v1/users/00000000-0000-4000-8000-000000000000",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -719,7 +719,7 @@
                 "api",
                 "v1",
                 "users",
-                "9999"
+                "00000000-0000-4000-8000-000000000000"
               ]
             },
             "body": {
@@ -810,7 +810,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/users/1",
+              "raw": "{{baseUrl}}/api/v1/users/{{resetUserId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -818,7 +818,7 @@
                 "api",
                 "v1",
                 "users",
-                "1"
+                "{{resetUserId}}"
               ]
             }
           }
