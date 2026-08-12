@@ -68,7 +68,9 @@ public class PasswordResetService {
             throw new InvalidOrExpiredTokenException("Token inválido ou expirado");
         }
 
-        User user = resetToken.getUser();
+        User user = userRepository.findById(resetToken.getUserId())
+                .orElseThrow(() -> new InvalidOrExpiredTokenException("Token inválido ou expirado"));
+
         user.setPassword(passwordEncoder.encode(request.newPassword()));
         userRepository.save(user);
 
@@ -80,7 +82,7 @@ public class PasswordResetService {
         String rawToken = tokenGenerator.generateToken();
 
         PasswordResetToken resetToken = PasswordResetToken.builder()
-                .user(user)
+                .userId(user.getId())
                 .tokenHash(tokenGenerator.hash(rawToken))
                 .expiresAt(LocalDateTime.now().plusMinutes(tokenExpirationMinutes))
                 .build();

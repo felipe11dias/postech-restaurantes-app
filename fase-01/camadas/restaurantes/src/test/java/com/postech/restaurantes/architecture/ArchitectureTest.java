@@ -51,9 +51,18 @@ public class ArchitectureTest {
             .should().dependOnClassesThat().resideInAPackage("..controller..")
             .allowEmptyShould(true);
 
+    /**
+     * O contrato do pacote repository continua sendo de interfaces: é o que a
+     * camada de Service enxerga e o que os testes conseguem substituir por mock.
+     *
+     * A exceção são as implementações em JDBC, sufixadas com "Jdbc", que existem
+     * desde que o Spring Data JPA (que gerava essas implementações em tempo de
+     * execução) foi substituído por SQL escrito à mão.
+     */
     @ArchTest
     static final ArchRule repositories_sao_interfaces = com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes()
             .that().resideInAPackage("..repository..")
+            .and().haveSimpleNameNotEndingWith("Jdbc")
             .should().beInterfaces()
             .allowEmptyShould(true);
 }

@@ -1,17 +1,5 @@
 package com.postech.restaurantes.entity;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -24,8 +12,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-@Entity
-@Table(name = "users")
+/**
+ * Usuário do sistema. Raiz do agregado: papéis e endereços só são persistidos
+ * através dele (ver UserRepositoryJdbc), que reproduz em SQL o que antes era
+ * cascade/orphanRemoval do JPA.
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -33,32 +24,17 @@ import java.util.UUID;
 @Builder
 public class User extends Auditable {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private UUID id;
-
-    @Column(name = "name", nullable = false)
     private String name;
-
-    @Column(name = "email", nullable = false, unique = true)
     private String email;
-
-    @Column(name = "login", nullable = false, unique = true)
     private String login;
-
-    @Column(name = "password", nullable = false)
     private String password;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(
-            name = "user_roles",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "role_id")
-    )
+    /** Papéis do usuário, materializados na tabela associativa user_roles. */
     @Builder.Default
     private Set<Role> roles = new HashSet<>();
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    /** Endereços do usuário (1:N na tabela addresses). */
     @Builder.Default
     private List<Address> addresses = new ArrayList<>();
 
@@ -68,11 +44,11 @@ public class User extends Auditable {
      */
     public void addAddress(Address address) {
         addresses.add(address);
-        address.setUser(this);
+        address.setUserId(id);
     }
 
     public void removeAddress(Address address) {
         addresses.remove(address);
-        address.setUser(null);
+        address.setUserId(null);
     }
 }

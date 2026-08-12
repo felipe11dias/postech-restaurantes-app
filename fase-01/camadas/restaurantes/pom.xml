@@ -31,9 +31,21 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
+        <!-- Acesso a dados com JDBC puro (JdbcTemplate), sem ORM -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+
+        <!--
+          Spring Data Commons apenas pelos tipos de paginação (Page, Pageable,
+          PageRequest) e pelo suporte web que resolve os parâmetros page/size/sort
+          e monta o PagedModel do HATEOAS. Não traz JPA nem Hibernate: o acesso a
+          dados continua sendo JDBC escrito à mão.
+        -->
+        <dependency>
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-commons</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

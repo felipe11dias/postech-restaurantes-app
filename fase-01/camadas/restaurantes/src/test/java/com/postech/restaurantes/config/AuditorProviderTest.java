@@ -12,10 +12,10 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DisplayName("SpringSecurityAuditorAware — resolução do auditor")
-class SpringSecurityAuditorAwareTest {
+@DisplayName("AuditorProvider — resolução do auditor")
+class AuditorProviderTest {
 
-    private final SpringSecurityAuditorAware auditorAware = new SpringSecurityAuditorAware();
+    private final AuditorProvider auditorProvider = new AuditorProvider();
 
     @AfterEach
     void limparContexto() {
@@ -25,7 +25,7 @@ class SpringSecurityAuditorAwareTest {
     @Test
     @DisplayName("sem Authentication no contexto, audita como \"system\"")
     void semAutenticacao_deveAuditarComoSystem() {
-        assertThat(auditorAware.getCurrentAuditor()).contains("system");
+        assertThat(auditorProvider.currentAuditor()).isEqualTo("system");
     }
 
     /**
@@ -40,7 +40,7 @@ class SpringSecurityAuditorAwareTest {
                 new AnonymousAuthenticationToken("key", "anonymousUser",
                         List.of(new SimpleGrantedAuthority("ROLE_ANONYMOUS"))));
 
-        assertThat(auditorAware.getCurrentAuditor()).contains("system");
+        assertThat(auditorProvider.currentAuditor()).isEqualTo("system");
     }
 
     @Test
@@ -50,6 +50,6 @@ class SpringSecurityAuditorAwareTest {
                 new UsernamePasswordAuthenticationToken("cliente.demo", null,
                         List.of(new SimpleGrantedAuthority("ROLE_CUSTOMER"))));
 
-        assertThat(auditorAware.getCurrentAuditor()).contains("cliente.demo");
+        assertThat(auditorProvider.currentAuditor()).isEqualTo("cliente.demo");
     }
 }

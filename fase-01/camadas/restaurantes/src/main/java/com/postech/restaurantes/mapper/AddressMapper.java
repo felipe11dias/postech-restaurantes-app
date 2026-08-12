@@ -14,7 +14,7 @@ import org.mapstruct.Mapping;
 public interface AddressMapper {
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "user", ignore = true)
+    @Mapping(target = "userId", ignore = true)
     Address toEntity(AddressRequest request);
 
     AddressResponse toResponse(Address address);

@@ -12,7 +12,7 @@ autenticação JWT, banco PostgreSQL e orquestração via Docker Compose.
 ## Stack
 
 - Java 21 · Spring Boot 3.5.x
-- Spring Web, Spring Data JPA, Spring Validation, Spring Security
+- Spring Web, Spring JDBC (`JdbcTemplate`, sem ORM), Spring Validation, Spring Security
 - PostgreSQL 16 · Flyway (migrations)
 - springdoc-openapi (Swagger) · jjwt (JWT) · Spring Mail (recuperação de senha)
 - MapStruct · Lombok · Spring HATEOAS · Spring Boot Actuator
@@ -132,7 +132,8 @@ a requisição de sucesso.
 ## Migrations e seeds (Flyway)
 
 O schema e os dados iniciais são versionados com **Flyway**, aplicados automaticamente ao
-subir a aplicação. O Hibernate roda em `validate` (não altera o banco).
+subir a aplicação. O Flyway é a única fonte da verdade do schema — não há ORM gerando
+nem validando DDL.
 
 - Local dos scripts: `src/main/resources/db/migration`
 - Nomenclatura: `V<versão>__<descrição>.sql`
@@ -163,14 +164,17 @@ Toda migration nova deve ganhar uma entrada no [`CHANGELOG.md`](CHANGELOG.md).
 ## Auditoria
 
 Todas as entidades (`User`, `Role`, `Address`, `PasswordResetToken`) estendem a classe
-base `Auditable` e são auditadas automaticamente via **Spring Data JPA Auditing**
-(`@EnableJpaAuditing`, `@CreatedDate`, `@LastModifiedDate`, `@CreatedBy`,
-`@LastModifiedBy`), preenchendo em toda escrita:
+base `Auditable`, preenchida em toda escrita:
 
 - `created_at` / `last_updated_at`: data/hora de criação e da última alteração.
 - `created_by` / `last_updated_by`: login do usuário autenticado no momento da escrita
-  (via `SecurityContextHolder`, no bean `SpringSecurityAuditorAware`), ou `"system"`
+  (via `SecurityContextHolder`, no bean `AuditorProvider`), ou `"system"`
   quando não há usuário autenticado (ex.: auto-cadastro público, seeds).
+
+Sem ORM não há um listener que preencha esses campos sozinho: os repositórios chamam
+`markCreated`/`markUpdated` imediatamente antes de cada INSERT/UPDATE. Por isso os campos
+de `Auditable` não têm setters públicos — só mudam por esses métodos, o que impede que
+uma data de criação seja sobrescrita por engano.
 
 ## Testes
 
@@ -180,7 +184,7 @@ mvn test
 
 - **ArchUnit** (`ArchitectureTest`): valida as regras da arquitetura em camadas.
 - **JUnit + Mockito** (`UserServiceTest`): cobre as regras de negócio do serviço de usuário.
-- **JUnit** (`SpringSecurityAuditorAwareTest`): cobre a resolução do auditor
+- **JUnit** (`AuditorProviderTest`): cobre a resolução do auditor
   (usuário autenticado, contexto anônimo e ausência de autenticação).
 
 ## Estrutura

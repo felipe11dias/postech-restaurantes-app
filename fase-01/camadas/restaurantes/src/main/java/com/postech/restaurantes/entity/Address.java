@@ -1,14 +1,5 @@
 package com.postech.restaurantes.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -21,9 +12,11 @@ import java.util.UUID;
  * Endereço de um usuário. Um usuário pode ter vários endereços (1:N),
  * por isso o endereço foi modelado como tabela própria (normalização),
  * e não como objeto embutido.
+ *
+ * O vínculo com o usuário é o id (userId), não a entidade inteira: sem ORM não
+ * há carregamento preguiçoso, e guardar o objeto User completo aqui obrigaria a
+ * carregá-lo (com papéis e demais endereços) toda vez que um endereço fosse lido.
  */
-@Entity
-@Table(name = "addresses")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -31,32 +24,13 @@ import java.util.UUID;
 @Builder
 public class Address extends Auditable {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private UUID id;
-
-    @Column(name = "street", nullable = false)
     private String street;
-
-    @Column(name = "number")
     private String number;
-
-    @Column(name = "complement")
     private String complement;
-
-    @Column(name = "neighborhood")
     private String neighborhood;
-
-    @Column(name = "city", nullable = false)
     private String city;
-
-    @Column(name = "state", nullable = false, length = 2)
     private String state;
-
-    @Column(name = "zip_code", nullable = false, length = 9)
     private String zipCode;
-
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    private UUID userId;
 }
