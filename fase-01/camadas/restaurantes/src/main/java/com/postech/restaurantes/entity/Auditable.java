@@ -1,7 +1,5 @@
 package com.postech.restaurantes.entity;
 
-import lombok.Getter;
-
 import java.time.LocalDateTime;
 
 /**
@@ -14,13 +12,28 @@ import java.time.LocalDateTime;
  * apenas através dos métodos abaixo, que expressam a intenção e impedem que uma
  * data de criação seja sobrescrita por engano.
  */
-@Getter
 public abstract class Auditable {
 
     private LocalDateTime createdAt;
     private LocalDateTime lastUpdatedAt;
     private String createdBy;
     private String lastUpdatedBy;
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getLastUpdatedAt() {
+        return lastUpdatedAt;
+    }
+
+    public String getCreatedBy() {
+        return createdBy;
+    }
+
+    public String getLastUpdatedBy() {
+        return lastUpdatedBy;
+    }
 
     /** Marca a criação do registro. Chamado pelo repositório antes do INSERT. */
     public void markCreated(String auditor, LocalDateTime moment) {

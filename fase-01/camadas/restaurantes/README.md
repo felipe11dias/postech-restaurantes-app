@@ -15,7 +15,7 @@ autenticação JWT, banco PostgreSQL e orquestração via Docker Compose.
 - Spring Web, Spring JDBC (`JdbcTemplate`, sem ORM), Spring Validation, Spring Security
 - PostgreSQL 16 · Flyway (migrations)
 - springdoc-openapi (Swagger) · jjwt (JWT) · Spring Mail (recuperação de senha)
-- MapStruct · Lombok · Spring HATEOAS · Spring Boot Actuator
+- MapStruct · Spring HATEOAS · Spring Boot Actuator
 - JUnit 5 · Mockito · ArchUnit
 
 ## Pré-requisitos

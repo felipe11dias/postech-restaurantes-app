@@ -1,11 +1,6 @@
 package com.postech.restaurantes.entity;
 
 import com.postech.restaurantes.enums.RoleName;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.util.UUID;
 
@@ -14,13 +9,59 @@ import java.util.UUID;
  * são carregados na inicialização (seed) e referenciados pelos usuários
  * através da tabela associativa user_roles.
  */
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class Role extends Auditable {
 
     private UUID id;
     private RoleName name;
+
+    public Role() {
+    }
+
+    public Role(UUID id, RoleName name) {
+        this.id = id;
+        this.name = name;
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public RoleName getName() {
+        return name;
+    }
+
+    public void setName(RoleName name) {
+        this.name = name;
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static final class Builder {
+
+        private UUID id;
+        private RoleName name;
+
+        private Builder() {
+        }
+
+        public Builder id(UUID id) {
+            this.id = id;
+            return this;
+        }
+
+        public Builder name(RoleName name) {
+            this.name = name;
+            return this;
+        }
+
+        public Role build() {
+            return new Role(id, name);
+        }
+    }
 }
