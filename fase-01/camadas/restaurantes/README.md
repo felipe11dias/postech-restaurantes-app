@@ -117,11 +117,28 @@ Com a aplicação no ar: `http://localhost:8080/swagger-ui.html`
 
 ## Coleção Postman
 
-Em `postman/Restaurantes.postman_collection.json`. Importe no Postman e execute de cima
-para baixo: **Autenticação > Login admin** (salva `{{adminToken}}`), depois
-**Recuperação de Senha > Cadastro para teste de recuperação** (salva `{{resetUserId}}`) e
-**Usuários > Cadastro válido** (salva `{{userId}}`) e **Login do usuário criado** (salva
-`{{token}}`). Os cenários de posse (`403`) e de admin (`200`/`404`) já vêm cobertos.
+Em `postman/Restaurantes.postman_collection.json`: **47 requests**, cobrindo todos os casos
+de cada endpoint da aplicação (sucesso, validação, autenticação, autorização por posse,
+conflito e não encontrado), além do Actuator e da especificação OpenAPI.
+
+Importe no Postman e execute de cima para baixo — os scripts de teste populam
+`{{adminToken}}`, `{{userId}}`, `{{token}}` e `{{outroId}}` automaticamente.
+
+O único caso que exige um passo manual é a redefinição de senha: o token bruto é enviado
+por e-mail e **nunca** retornado pela API. Copie-o do log da aplicação (ele é registrado em
+`INFO`) para a variável `{{resetToken}}`.
+
+Para rodar a coleção pela linha de comando, com a aplicação no ar:
+
+```bash
+npx newman run postman/Restaurantes.postman_collection.json
+```
+
+### Prints
+
+`postman/prints/` traz um print por caso (47 no total), com a requisição e a resposta real
+de cada cenário. São gerados a partir da mesma definição que origina a coleção, executada
+contra a aplicação em execução — coleção e prints não podem divergir.
 
 O caso de sucesso da redefinição de senha (**Recuperação de Senha > Redefinir senha —
 sucesso**) depende da variável `{{resetToken}}`: como a API nunca retorna o token na resposta

@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Restaurantes — Tech Challenge Fase 1",
-    "description": "Coleção de testes da API de gestão de usuários. Fluxo recomendado (execute de cima para baixo): 1) Autenticação > Login admin salva {{adminToken}}; 2) Recuperação de Senha > Cadastro para teste salva {{resetUserId}}; 3) Usuários > Cadastro válido salva {{userId}}; 4) Login do usuário criado salva {{token}}. A API aplica autorização por posse: um usuário só acessa o próprio {id}; ROLE_ADMIN acessa qualquer um. O caso de sucesso da redefinição de senha depende do token bruto enviado por e-mail (nunca retornado pela API) — veja a variável {{resetToken}}.",
+    "description": "Coleção de testes da API de gestão de usuários — cobre todos os casos de cada endpoint.\n\nExecute de cima para baixo: os scripts de teste populam {{adminToken}}, {{userId}},\n{{token}} e {{outroId}} automaticamente.\n\nIdentificadores são UUID. A API aplica autorização por posse: um usuário só acessa o\npróprio {id}; ROLE_ADMIN acessa qualquer um.\n\nOs casos de redefinição de senha dependem do token bruto enviado por e-mail, que a API\nnunca retorna — copie-o do log da aplicação para a variável {{resetToken}}.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -10,21 +10,6 @@
       "item": [
         {
           "name": "Login admin (seed) — salva adminToken",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "if (pm.response.code === 200) {",
-                  "  const json = pm.response.json();",
-                  "  pm.collectionVariables.set('adminToken', json.token);",
-                  "  console.log('adminToken salvo.');",
-                  "}"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "POST",
             "header": [
@@ -49,10 +34,25 @@
               "mode": "raw",
               "raw": "{\n  \"login\": \"admin.demo\",\n  \"password\": \"admin12345\"\n}"
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('adminToken', json.token);",
+                  "  console.log('adminToken salvo.');",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Login inválido (401)",
+          "name": "Login inválido — credenciais incorretas (401)",
           "request": {
             "method": "POST",
             "header": [
@@ -75,224 +75,45 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"login\": \"admin.demo\",\n  \"password\": \"senhaErrada\"\n}"
+              "raw": "{\n  \"login\": \"admin.demo\",\n  \"password\": \"senha-errada\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login inválido — campos obrigatórios ausentes (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"\",\n  \"password\": \"\"\n}"
             }
           }
         }
       ]
     },
     {
-      "name": "Recuperação de Senha",
-      "item": [
-        {
-          "name": "Cadastro para teste de recuperação (201) — salva resetUserId",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "if (pm.response.code === 201) {",
-                  "  const json = pm.response.json();",
-                  "  pm.collectionVariables.set('resetUserId', json.id);",
-                  "  console.log('resetUserId salvo: ' + json.id);",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Maria Recuperação\",\n  \"email\": \"maria.reset@email.com\",\n  \"login\": \"maria.reset\",\n  \"password\": \"senhaAntiga123\",\n  \"roles\": [\n    \"ROLE_CUSTOMER\"\n  ],\n  \"addresses\": []\n}"
-            },
-            "description": "Usuário dedicado a este fluxo, para não interferir com os demais cenários."
-          }
-        },
-        {
-          "name": "Esqueci minha senha — e-mail existente (202)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/forgot-password",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "forgot-password"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"maria.reset@email.com\"\n}"
-            },
-            "description": "Gera e envia por e-mail um token de redefinição de uso único. A API não retorna o token na resposta; para o cenário de sucesso abaixo, defina a variável de coleção {{resetToken}} com o valor recebido por e-mail (ou logado pela aplicação) antes de executar a requisição 'Redefinir senha — sucesso'."
-          }
-        },
-        {
-          "name": "Esqueci minha senha — e-mail inexistente (202)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/forgot-password",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "forgot-password"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"nao.cadastrado@email.com\"\n}"
-            },
-            "description": "Resposta idêntica ao caso de e-mail existente (202) — a API não revela quais e-mails estão cadastrados."
-          }
-        },
-        {
-          "name": "Redefinir senha — token inválido (400)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/reset-password",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "reset-password"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"token\": \"token-inexistente-ou-expirado\",\n  \"newPassword\": \"senhaNova456\",\n  \"confirmPassword\": \"senhaNova456\"\n}"
-            }
-          }
-        },
-        {
-          "name": "Redefinir senha — senhas não coincidem (400)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/reset-password",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "reset-password"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"token\": \"qualquer-token\",\n  \"newPassword\": \"senhaNova456\",\n  \"confirmPassword\": \"senhaDiferente789\"\n}"
-            },
-            "description": "A confirmação é conferida antes da validação do token, então qualquer valor de token dispara o mesmo erro 400."
-          }
-        },
-        {
-          "name": "Redefinir senha — sucesso (204)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/reset-password",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "reset-password"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"senhaNova456\",\n  \"confirmPassword\": \"senhaNova456\"\n}"
-            },
-            "description": "Requer a variável de coleção {{resetToken}} preenchida com o token bruto recebido por e-mail na requisição 'Esqueci minha senha — e-mail existente'."
-          }
-        }
-      ]
-    },
-    {
-      "name": "Usuários",
+      "name": "Usuários — Cadastro",
       "item": [
         {
           "name": "Cadastro válido (201) — salva userId",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "if (pm.response.code === 201) {",
-                  "  const json = pm.response.json();",
-                  "  pm.collectionVariables.set('userId', json.id);",
-                  "  console.log('userId salvo: ' + json.id);",
-                  "}"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "POST",
             "header": [
@@ -316,25 +137,25 @@
               "mode": "raw",
               "raw": "{\n  \"name\": \"João Silva\",\n  \"email\": \"joao.silva@email.com\",\n  \"login\": \"joao.silva\",\n  \"password\": \"senhaSegura123\",\n  \"roles\": [\n    \"ROLE_CUSTOMER\"\n  ],\n  \"addresses\": [\n    {\n      \"street\": \"Rua das Flores\",\n      \"number\": \"100\",\n      \"complement\": \"Apto 21\",\n      \"neighborhood\": \"Centro\",\n      \"city\": \"São Paulo\",\n      \"state\": \"SP\",\n      \"zipCode\": \"01001-000\"\n    }\n  ]\n}"
             }
-          }
-        },
-        {
-          "name": "Login do usuário criado — salva token",
+          },
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "if (pm.response.code === 200) {",
+                  "if (pm.response.code === 201) {",
                   "  const json = pm.response.json();",
-                  "  pm.collectionVariables.set('token', json.token);",
-                  "  console.log('token do usuário salvo.');",
+                  "  pm.collectionVariables.set('userId', json.id);",
+                  "  console.log('userId salvo.');",
                   "}"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "Login do usuário criado — salva token",
           "request": {
             "method": "POST",
             "header": [
@@ -359,10 +180,25 @@
               "mode": "raw",
               "raw": "{\n  \"login\": \"joao.silva\",\n  \"password\": \"senhaSegura123\"\n}"
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('token', json.token);",
+                  "  console.log('token salvo.');",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name": "Cadastro inválido — campos faltando (400)",
+          "name": "Cadastro de segundo usuário (201) — salva outroId",
           "request": {
             "method": "POST",
             "header": [
@@ -384,7 +220,76 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"\",\n  \"email\": \"invalido\",\n  \"roles\": []\n}"
+              "raw": "{\n  \"name\": \"Maria Souza\",\n  \"email\": \"maria.souza@email.com\",\n  \"login\": \"maria.souza\",\n  \"password\": \"senhaSegura123\",\n  \"roles\": [\n    \"ROLE_CUSTOMER\"\n  ],\n  \"addresses\": [\n    {\n      \"street\": \"Rua das Flores\",\n      \"number\": \"100\",\n      \"complement\": \"Apto 21\",\n      \"neighborhood\": \"Centro\",\n      \"city\": \"São Paulo\",\n      \"state\": \"SP\",\n      \"zipCode\": \"01001-000\"\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('outroId', json.id);",
+                  "  console.log('outroId salvo.');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cadastro inválido — campos obrigatórios ausentes (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\",\n  \"email\": \"nao-e-email\",\n  \"login\": \"x\",\n  \"password\": \"123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Cadastro inválido — corpo malformado (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"name\": \"João\", "
             }
           }
         },
@@ -411,7 +316,34 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"João Silva\",\n  \"email\": \"joao.silva@email.com\",\n  \"login\": \"joao.silva\",\n  \"password\": \"senhaSegura123\",\n  \"roles\": [\n    \"ROLE_CUSTOMER\"\n  ],\n  \"addresses\": [\n    {\n      \"street\": \"Rua das Flores\",\n      \"number\": \"100\",\n      \"complement\": \"Apto 21\",\n      \"neighborhood\": \"Centro\",\n      \"city\": \"São Paulo\",\n      \"state\": \"SP\",\n      \"zipCode\": \"01001-000\"\n    }\n  ]\n}"
+              "raw": "{\n  \"name\": \"João Silva\",\n  \"email\": \"joao.silva@email.com\",\n  \"login\": \"outro.login\",\n  \"password\": \"senhaSegura123\",\n  \"roles\": [\n    \"ROLE_CUSTOMER\"\n  ],\n  \"addresses\": [\n    {\n      \"street\": \"Rua das Flores\",\n      \"number\": \"100\",\n      \"complement\": \"Apto 21\",\n      \"neighborhood\": \"Centro\",\n      \"city\": \"São Paulo\",\n      \"state\": \"SP\",\n      \"zipCode\": \"01001-000\"\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Cadastro inválido — login duplicado (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"João Silva\",\n  \"email\": \"outro.email@email.com\",\n  \"login\": \"joao.silva\",\n  \"password\": \"senhaSegura123\",\n  \"roles\": [\n    \"ROLE_CUSTOMER\"\n  ],\n  \"addresses\": [\n    {\n      \"street\": \"Rua das Flores\",\n      \"number\": \"100\",\n      \"complement\": \"Apto 21\",\n      \"neighborhood\": \"Centro\",\n      \"city\": \"São Paulo\",\n      \"state\": \"SP\",\n      \"zipCode\": \"01001-000\"\n    }\n  ]\n}"
             }
           }
         },
@@ -438,52 +370,20 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Tentativa Admin\",\n  \"email\": \"tentativa.admin@email.com\",\n  \"login\": \"tentativa.admin\",\n  \"password\": \"senhaSegura123\",\n  \"roles\": [\n    \"ROLE_ADMIN\"\n  ],\n  \"addresses\": []\n}"
+              "raw": "{\n  \"name\": \"João Silva\",\n  \"email\": \"hacker@email.com\",\n  \"login\": \"hacker\",\n  \"password\": \"senhaSegura123\",\n  \"roles\": [\n    \"ROLE_ADMIN\"\n  ],\n  \"addresses\": [\n    {\n      \"street\": \"Rua das Flores\",\n      \"number\": \"100\",\n      \"complement\": \"Apto 21\",\n      \"neighborhood\": \"Centro\",\n      \"city\": \"São Paulo\",\n      \"state\": \"SP\",\n      \"zipCode\": \"01001-000\"\n    }\n  ]\n}"
             }
           }
-        },
-        {
-          "name": "Buscar por nome (200)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users?name=silva",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users"
-              ],
-              "query": [
-                {
-                  "key": "name",
-                  "value": "silva"
-                }
-              ]
-            }
-          }
-        },
+        }
+      ]
+    },
+    {
+      "name": "Usuários — Consultas",
+      "item": [
         {
           "name": "Listar paginado (200)",
           "request": {
             "method": "GET",
             "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{token}}"
@@ -517,44 +417,10 @@
           }
         },
         {
-          "name": "Buscar por nome sem token (401)",
+          "name": "Listar paginado — sem token (401)",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users?name=joao",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users"
-              ],
-              "query": [
-                {
-                  "key": "name",
-                  "value": "joao"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Listar paginado sem token (401)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/users?page=0&size=10",
               "host": [
@@ -579,17 +445,124 @@
           }
         },
         {
+          "name": "Buscar por nome (200)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users?name=silva",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "name",
+                  "value": "silva"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Buscar por nome — sem token (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users?name=silva",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "name",
+                  "value": "silva"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ordenação por coluna não permitida — ignorada (200)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users?sort=password,asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "sort",
+                  "value": "password,asc"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Usuários — Consulta por id",
+      "item": [
+        {
           "name": "Buscar por id — próprio usuário (200)",
           "request": {
             "method": "GET",
             "header": [
               {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
                 "key": "Authorization",
                 "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{userId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Buscar por id — via admin (200)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
               }
             ],
             "url": {
@@ -612,16 +585,12 @@
             "method": "GET",
             "header": [
               {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
                 "key": "Authorization",
                 "value": "Bearer {{token}}"
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/users/{{resetUserId}}",
+              "raw": "{{baseUrl}}/api/v1/users/{{outroId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -629,26 +598,64 @@
                 "api",
                 "v1",
                 "users",
-                "{{resetUserId}}"
+                "{{outroId}}"
               ]
-            },
-            "description": "O usuário comum (não dono do recurso) recebe 403 ao tentar acessar outro id."
+            }
           }
         },
         {
-          "name": "Buscar por id via admin (200)",
+          "name": "Buscar por id inexistente — via admin (404)",
           "request": {
             "method": "GET",
             "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{adminToken}}"
               }
             ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/00000000-0000-4000-8000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "00000000-0000-4000-8000-000000000000"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Buscar por id em formato inválido (400)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/nao-e-um-uuid",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "nao-e-um-uuid"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Buscar por id — sem token (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/users/{{userId}}",
               "host": [
@@ -660,10 +667,14 @@
                 "users",
                 "{{userId}}"
               ]
-            },
-            "description": "ROLE_ADMIN acessa qualquer usuário."
+            }
           }
-        },
+        }
+      ]
+    },
+    {
+      "name": "Usuários — Atualização",
+      "item": [
         {
           "name": "Atualizar dados — próprio (200)",
           "request": {
@@ -692,12 +703,44 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"João Silva Atualizado\",\n  \"email\": \"joao.silva@email.com\",\n  \"login\": \"joao.silva\",\n  \"addresses\": [\n    {\n      \"street\": \"Av. Paulista\",\n      \"number\": \"1000\",\n      \"complement\": \"\",\n      \"neighborhood\": \"Bela Vista\",\n      \"city\": \"São Paulo\",\n      \"state\": \"SP\",\n      \"zipCode\": \"01310-100\"\n    }\n  ]\n}"
+              "raw": "{\n  \"name\": \"João Silva Atualizado\",\n  \"email\": \"joao.silva@email.com\",\n  \"login\": \"joao.silva\",\n  \"addresses\": [\n    {\n      \"street\": \"Avenida Paulista\",\n      \"number\": \"1500\",\n      \"complement\": \"Apto 21\",\n      \"neighborhood\": \"Centro\",\n      \"city\": \"São Paulo\",\n      \"state\": \"SP\",\n      \"zipCode\": \"01001-000\"\n    }\n  ]\n}"
             }
           }
         },
         {
-          "name": "Atualizar dados — inexistente via admin (404)",
+          "name": "Atualizar dados de outro usuário — negado (403)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{outroId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{outroId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tentativa\",\n  \"email\": \"maria.souza@email.com\",\n  \"login\": \"maria.souza\",\n  \"addresses\": [\n    {\n      \"street\": \"Rua das Flores\",\n      \"number\": \"100\",\n      \"complement\": \"Apto 21\",\n      \"neighborhood\": \"Centro\",\n      \"city\": \"São Paulo\",\n      \"state\": \"SP\",\n      \"zipCode\": \"01001-000\"\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Atualizar dados inexistente — via admin (404)",
           "request": {
             "method": "PUT",
             "header": [
@@ -724,11 +767,75 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Inexistente\",\n  \"email\": \"x@email.com\",\n  \"login\": \"x\",\n  \"addresses\": []\n}"
-            },
-            "description": "Admin passa na autorização; o serviço então retorna 404 para id inexistente."
+              "raw": "{\n  \"name\": \"Fantasma\",\n  \"email\": \"fantasma@email.com\",\n  \"login\": \"fantasma\",\n  \"addresses\": [\n    {\n      \"street\": \"Rua das Flores\",\n      \"number\": \"100\",\n      \"complement\": \"Apto 21\",\n      \"neighborhood\": \"Centro\",\n      \"city\": \"São Paulo\",\n      \"state\": \"SP\",\n      \"zipCode\": \"01001-000\"\n    }\n  ]\n}"
+            }
           }
         },
+        {
+          "name": "Atualizar dados — campos inválidos (400)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\",\n  \"email\": \"nao-e-email\",\n  \"login\": \"\",\n  \"addresses\": []\n}"
+            }
+          }
+        },
+        {
+          "name": "Atualizar dados — sem token (401)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sem Token\",\n  \"email\": \"joao.silva@email.com\",\n  \"login\": \"joao.silva\",\n  \"addresses\": [\n    {\n      \"street\": \"Rua das Flores\",\n      \"number\": \"100\",\n      \"complement\": \"Apto 21\",\n      \"neighborhood\": \"Centro\",\n      \"city\": \"São Paulo\",\n      \"state\": \"SP\",\n      \"zipCode\": \"01001-000\"\n    }\n  ]\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Usuários — Troca de senha",
+      "item": [
         {
           "name": "Trocar senha — próprio, sucesso (204)",
           "request": {
@@ -763,7 +870,7 @@
           }
         },
         {
-          "name": "Trocar senha — erro senha atual (400)",
+          "name": "Trocar senha — senha atual incorreta (400)",
           "request": {
             "method": "PATCH",
             "header": [
@@ -791,14 +898,14 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"currentPassword\": \"errada\",\n  \"newPassword\": \"novaSenha456\",\n  \"confirmPassword\": \"novaSenha456\"\n}"
+              "raw": "{\n  \"currentPassword\": \"senha-errada\",\n  \"newPassword\": \"outraSenha789\",\n  \"confirmPassword\": \"outraSenha789\"\n}"
             }
           }
         },
         {
-          "name": "Deletar outro usuário — negado (403)",
+          "name": "Trocar senha — confirmação divergente (400)",
           "request": {
-            "method": "DELETE",
+            "method": "PATCH",
             "header": [
               {
                 "key": "Content-Type",
@@ -810,7 +917,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/users/{{resetUserId}}",
+              "raw": "{{baseUrl}}/api/v1/users/{{userId}}/password",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -818,7 +925,318 @@
                 "api",
                 "v1",
                 "users",
-                "{{resetUserId}}"
+                "{{userId}}",
+                "password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"novaSenha456\",\n  \"newPassword\": \"outraSenha789\",\n  \"confirmPassword\": \"divergente999\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Trocar senha de outro usuário — negado (403)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{outroId}}/password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{outroId}}",
+                "password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"senhaSegura123\",\n  \"newPassword\": \"invadida123\",\n  \"confirmPassword\": \"invadida123\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Recuperação de senha",
+      "item": [
+        {
+          "name": "Esqueci minha senha — e-mail existente (202)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/forgot-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "forgot-password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"joao.silva@email.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Esqueci minha senha — e-mail inexistente (202)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/forgot-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "forgot-password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nao.existe@email.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Esqueci minha senha — e-mail inválido (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/forgot-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "forgot-password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nao-e-email\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Redefinir senha — token inválido (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "reset-password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"token-que-nao-existe\",\n  \"newPassword\": \"novaSenha456\",\n  \"confirmPassword\": \"novaSenha456\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Redefinir senha — senhas não coincidem (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "reset-password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"novaSenha456\",\n  \"confirmPassword\": \"divergente999\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Redefinir senha — sucesso (204)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "reset-password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"senhaRedefinida789\",\n  \"confirmPassword\": \"senhaRedefinida789\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Redefinir senha — token já utilizado (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "reset-password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"maisUma123\",\n  \"confirmPassword\": \"maisUma123\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Usuários — Exclusão",
+      "item": [
+        {
+          "name": "Deletar outro usuário — negado (403)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{outroId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{outroId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Deletar id inexistente — via admin (404)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/00000000-0000-4000-8000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "00000000-0000-4000-8000-000000000000"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Deletar — sem token (401)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{userId}}"
               ]
             }
           }
@@ -828,10 +1246,6 @@
           "request": {
             "method": "DELETE",
             "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{token}}"
@@ -847,6 +1261,106 @@
                 "v1",
                 "users",
                 "{{userId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Monitoramento (Actuator)",
+      "item": [
+        {
+          "name": "Health check (200)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Info (200)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/info",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "info"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Metrics — autenticado (200)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/metrics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "metrics"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Metrics — sem token (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/metrics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "metrics"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Documentação (OpenAPI)",
+      "item": [
+        {
+          "name": "Especificação OpenAPI — pública (200)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v3/api-docs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v3",
+                "api-docs"
               ]
             }
           }
@@ -872,7 +1386,7 @@
       "value": ""
     },
     {
-      "key": "resetUserId",
+      "key": "outroId",
       "value": ""
     },
     {

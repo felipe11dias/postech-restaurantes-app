@@ -78,8 +78,6 @@ Registrado aqui por honestidade de engenharia, não como item concluído:
   as interfaces de repositório, então passariam mesmo com o SQL quebrado. A verificação foi
   feita manualmente contra PostgreSQL real (ver Etapa 12). Essa é a rede de proteção que a
   saída do ORM removeu e que ainda precisa ser reconstruída — por exemplo com Testcontainers.
-- **Os prints da coleção Postman estão desatualizados**: foram capturados quando os
-  identificadores ainda eram numéricos e precisam ser regerados.
 
 ---
 
@@ -1146,34 +1144,49 @@ real, com a aplicação empacotada e em execução. Cobertura da verificação:
 
 ### Coleção Postman
 
-Arquivo `restaurantes/postman/Restaurantes.postman_collection.json` (formato v2.1). Usa as
-variáveis `{{baseUrl}}` e `{{token}}`; o request de login tem um *script de teste* que
-salva o token automaticamente na coleção. Organizada em pastas, cobre todos os cenários
-exigidos:
+Arquivo `restaurantes/postman/Restaurantes.postman_collection.json` (formato v2.1), com
+**47 requests** organizados em 10 pastas — um por caso de cada endpoint da aplicação.
+Os *scripts de teste* salvam `{{adminToken}}`, `{{userId}}`, `{{token}}` e `{{outroId}}`
+automaticamente, então basta executar de cima para baixo.
 
-**Autenticação:** login admin — salva `{{adminToken}}` · login inválido (401).
+| Pasta | Casos | Cobertura |
+| ----- | ----- | --------- |
+| Autenticação | 3 | login válido (200), credenciais incorretas (401), campos ausentes (400) |
+| Usuários — Cadastro | 8 | válido (201), login do usuário criado, segundo usuário, campos ausentes (400), corpo malformado (400), e-mail duplicado (409), login duplicado (409), `ROLE_ADMIN` proibido (403) |
+| Usuários — Consultas | 5 | listagem (200/401), busca por nome (200/401), ordenação por coluna não permitida (200, ignorada) |
+| Usuários — Consulta por id | 6 | próprio (200), via admin (200), de outro usuário (403), inexistente (404), id malformado (400), sem token (401) |
+| Usuários — Atualização | 5 | próprio (200), de outro (403), inexistente (404), campos inválidos (400), sem token (401) |
+| Usuários — Troca de senha | 4 | sucesso (204), senha atual incorreta (400), confirmação divergente (400), de outro usuário (403) |
+| Recuperação de senha | 7 | e-mail existente/inexistente/inválido (202/202/400), token inválido (400), senhas divergentes (400), sucesso (204), token já usado (400) |
+| Usuários — Exclusão | 4 | de outro (403), inexistente (404), sem token (401), próprio (204) |
+| Monitoramento (Actuator) | 4 | health (200), info (200), metrics autenticado (200) e sem token (401) |
+| Documentação (OpenAPI) | 1 | `/v3/api-docs` público (200) |
 
-**Recuperação de senha:** cadastro para teste (salva `{{resetUserId}}`) · solicitação e
-redefinição.
+Dois casos merecem nota por documentarem decisões de projeto: a **ordenação por coluna não
+permitida** evidencia a lista fixa de propriedades da Etapa 4 (a resposta volta na ordenação
+padrão), e o **e-mail inexistente no "esqueci minha senha"** devolve exatamente a mesma
+resposta do e-mail existente, para não revelar quais endereços estão cadastrados.
 
-**Usuários:** cadastro válido (201, salva `{{userId}}`) · login do usuário criado (salva
-`{{token}}`) · cadastro inválido por campos faltando (400) · cadastro inválido por e-mail
-duplicado (409) · **cadastro solicitando `ROLE_ADMIN` → proibido (403)** · busca por nome
-(200) · listar paginado (200) · busca por id do próprio usuário (200) · **busca por id de
-outro usuário → negado (403)** · **busca por id via admin (200)** · atualização do próprio
-(200) · atualização de inexistente via admin (404) · troca de senha do próprio com sucesso
-(204) e com erro (400) · exclusão do próprio (204).
+O único caso que exige passo manual é o sucesso da redefinição de senha: o token bruto é
+enviado por e-mail e nunca retornado pela API — copie-o do log da aplicação para
+`{{resetToken}}`.
 
-**Ajuste da v2.** Quatro requests usavam identificadores numéricos fixos na URL (`/users/1`,
-`/users/9999`) nos cenários de 403 e 404. Com UUID, esses valores passariam a ser rejeitados
-como **400** antes de chegar à regra que o cenário pretendia demonstrar. Foram trocados
-pelas variáveis de id já capturadas no fluxo e por um UUID válido porém inexistente.
+A coleção foi validada executando-a de ponta a ponta com o **Newman** (runner oficial do
+Postman) contra a aplicação em execução: 47 requests, nenhuma falha.
 
-Uso: importar no Postman e executar de cima para baixo — o fluxo popula `{{adminToken}}`,
-`{{userId}}`, `{{resetUserId}}` e `{{token}}` automaticamente via *scripts de teste*.
+```bash
+npx newman run postman/Restaurantes.postman_collection.json
+```
 
-> **Pendência.** Os prints da coleção em `postman/prints/` foram capturados quando os
-> identificadores ainda eram numéricos e precisam ser regerados para a entrega.
+### Prints
+
+`restaurantes/postman/prints/` traz **um print por caso** (47 no total, `1000x670`), cada um
+com o método, a URL, o corpo enviado e a resposta real — status, tempo e tamanho incluídos.
+
+Coleção e prints são gerados a partir da **mesma definição de cenários**, executada contra a
+aplicação no ar: os dois não podem divergir, e nenhum print exibe uma resposta que não tenha
+sido efetivamente devolvida pela API. Os identificadores que aparecem nas URLs e nos corpos
+são os UUID reais gerados naquela execução.
 
 ### README do repositório
 

@@ -39,11 +39,16 @@ Histórico de versões do relatório. Formato: versão · data · mudanças.
   e o teste correspondente vira `AuditorProviderTest`. Etapas 2 e 12.
 - Regra de ArchUnit `repositories_sao_interfaces` ajustada para admitir as implementações
   `*Jdbc`, preservando a intenção original. Etapas 4 e 12.
-- Coleção Postman: quatro requests com ids numéricos fixos (cenários de 403 e 404) ajustados
-  para UUID. Etapa 13.
-- Registradas como **pendências** a ausência de teste automatizado sobre o SQL escrito à mão
-  (com o detalhamento da verificação manual realizada em seu lugar) e os prints da coleção
-  Postman desatualizados. Etapas 12 e 13.
+- **Coleção Postman e prints refeitos**: de 26 para **47 requests**, cobrindo todos os casos
+  de cada endpoint (sucesso, validação, autenticação, autorização por posse, conflito e não
+  encontrado), mais Actuator e a especificação OpenAPI. Entram os casos que faltavam — login
+  duplicado (409), atualização e troca de senha de outro usuário (403), exclusão inexistente
+  (404) e sem token (401) — e os dois novos 400 (id malformado e corpo malformado). Coleção
+  e prints passam a ser gerados da mesma definição de cenários, executada contra a aplicação
+  no ar, de modo que não possam divergir. Validada com Newman: 47 requests, nenhuma falha.
+  Etapa 13.
+- Registrada como **pendência** a ausência de teste automatizado sobre o SQL escrito à mão,
+  com o detalhamento da verificação manual realizada em seu lugar. Etapa 12.
 
 ## v1.2
 - **Auditoria (JPA):** todas as entidades (`User`, `Role`, `Address`,
