@@ -56,9 +56,11 @@ quebra, endereçou uma falha de segurança real.
 | 2 | **Spring Data JPA → JDBC (`JdbcTemplate`)** | Tornar o acesso a dados explícito, sem ORM | Etapas 1 e 4 |
 | 3 | **Remoção do Lombok** | Código Java puro, sem geração por processador de anotações | Etapas 1 e 5 |
 
-Além delas, duas correções pontuais entraram junto:
+Além delas, três correções pontuais entraram junto:
 
 - um `{id}` malformado passou a retornar **400** em vez de 500 (Etapa 9);
+- um **corpo de requisição malformado** passou a retornar **400** em vez de 500, e todo
+  erro 500 passou a ser **registrado em log** com a exceção completa (Etapa 9);
 - a **listagem paginada deixou de ler a coluna `password`** do banco (Etapa 4).
 
 ### Por que a ordem importou
@@ -952,6 +954,7 @@ esse padrão também ao 401 de acesso sem token (que normalmente escaparia do ad
 | --------------------------------------------------------------- | ---- | --------------------------------------------------- |
 | `MethodArgumentNotValidException` (Bean Validation)              | 400  | Requisição inválida (com mapa `errors` por campo)   |
 | **`MethodArgumentTypeMismatchException`** (ex.: `{id}` que não é UUID) | 400 | **Requisição inválida**                        |
+| **`HttpMessageNotReadableException`** (corpo ausente ou JSON malformado) | 400 | **Requisição inválida**                     |
 | `IllegalArgumentException` (VOs `Email`/`ZipCode`)               | 400  | Requisição inválida                                 |
 | `InvalidPasswordException`                                       | 400  | Senha inválida                                      |
 | `InvalidOrExpiredTokenException`                                 | 400  | Token inválido ou expirado                          |
@@ -968,6 +971,21 @@ lançava `MethodArgumentTypeMismatchException`, que não tinha tratamento e caí
 genérico, devolvendo **500** — um erro do cliente reportado como falha do servidor. Com a
 troca para UUID isso passaria a acontecer com qualquer id malformado, então a exceção ganhou
 tratamento próprio e retorna **400**.
+
+**Novidade da v2 — corpo de requisição ilegível.** Pelo mesmo motivo, um corpo ausente ou
+com JSON malformado (`HttpMessageNotReadableException`) também devolvia **500**. Agora
+retorna **400**, sem repassar a mensagem do parser — ela descreve a posição do caractere e a
+estrutura esperada, detalhe interno da desserialização que não ajuda quem chama a API.
+
+**Novidade da v2 — o 500 deixou de ser silencioso.** O handler genérico montava a resposta
+mas **nunca registrava a exceção**. Como a resposta ao cliente é deliberadamente vaga (para
+não vazar detalhes internos), o efeito prático era que uma falha inesperada não deixava
+rastro algum: sem stack trace no log, a causa se perdia. Isso foi sentido na prática durante
+esta revisão — diagnosticar um 500 exigiu reiniciar a aplicação com log em nível DEBUG. O
+handler passa a registrar a exceção completa em nível ERROR, mantendo a resposta genérica.
+
+> **Princípio.** Resposta vaga para o cliente, registro detalhado para quem opera. Uma coisa
+> não substitui a outra — e a ausência da segunda é o que torna um sistema não diagnosticável.
 
 Exemplo de resposta de validação (`400`):
 
@@ -1051,7 +1069,7 @@ e o Swagger em `http://localhost:8080/swagger-ui.html`.
 
 ## Etapa 12 — Testes (JUnit + Mockito + ArchUnit)
 
-Suíte atual: **18 testes**, todos verdes. Execução: `mvn test`.
+Suíte atual: **23 testes**, todos verdes. Execução: `mvn test`.
 
 **Testes de arquitetura (ArchUnit) — `ArchitectureTest` (5 regras).** Verificam, no build,
 as regras da arquitetura em camadas: Controller → Service → Repository, controllers não
@@ -1080,10 +1098,21 @@ auditor (Etapa 2), manipulando o `SecurityContextHolder`:
   → audita como `"system"`, e não como `"anonymousUser"`;
 - usuário autenticado → audita com o login.
 
+**Testes unitários (JUnit 5) — `GlobalExceptionHandlerTest` (5 testes).** O handler é uma
+classe comum, sem dependências, então é instanciado diretamente — sem necessidade de subir
+contexto web:
+
+- corpo com JSON malformado → `400`, e não `500`;
+- a mensagem do parser não é repassada ao cliente;
+- erro não previsto → `500` com resposta genérica;
+- a mensagem da exceção original não vaza na resposta (o caso testado simula uma falha de
+  conexão cujo texto conteria credenciais);
+- todo problema carrega um `timestamp`.
+
 ### Limitação conhecida da suíte
 
 **Nenhum teste automatizado exercita o SQL escrito à mão.** `UserServiceTest` mocka as
-interfaces de repositório, de modo que os 18 testes passariam mesmo que todas as consultas
+interfaces de repositório, de modo que os 23 testes passariam mesmo que todas as consultas
 estivessem quebradas. Enquanto havia ORM, a corretude do SQL era responsabilidade do
 Hibernate; ao assumir essa responsabilidade, o projeto assumiu também a necessidade de
 testá-la — e essa parte ainda não foi feita. O caminho natural é um teste de integração com
@@ -1108,6 +1137,8 @@ real, com a aplicação empacotada e em execução. Cobertura da verificação:
 | Atualizar cadastro e reautenticar (senha preservada)      | ✅ hashes BCrypt íntegros |
 | Recuperação de senha ponta a ponta, com SMTP real         | ✅ inclusive o bloqueio de reuso do token |
 | Erros: 400 (id malformado), 401, 403, 404, 409            | ✅ |
+| Corpo malformado, truncado, ausente ou com tipo incompatível | ✅ todos `400`, sem afetar o caminho feliz nem o mapa de erros da validação |
+| Registro em log de um `500` real (banco derrubado)        | ✅ stack trace completo no log, resposta genérica ao cliente |
 
 ---
 

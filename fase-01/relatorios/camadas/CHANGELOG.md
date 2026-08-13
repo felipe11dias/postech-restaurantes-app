@@ -25,6 +25,15 @@ Histórico de versões do relatório. Formato: versão · data · mudanças.
   autenticação. Documentado na Etapa 4.
 - **Correção:** parâmetro de rota malformado (`{id}` que não é UUID) passa a retornar `400`
   em vez de `500`, via tratamento de `MethodArgumentTypeMismatchException`. Etapa 9.
+- **Correção:** corpo de requisição ausente ou com JSON malformado
+  (`HttpMessageNotReadableException`) passa a retornar `400` em vez de `500`, sem repassar
+  a mensagem do parser ao cliente. Etapa 9.
+- **Correção — observabilidade:** o handler genérico registrava a resposta mas nunca a
+  exceção, de modo que um `500` não deixava rastro e a causa se perdia. Passa a logar a
+  exceção completa em nível ERROR, mantendo a resposta genérica ao cliente. Etapa 9.
+- Novo teste unitário `GlobalExceptionHandlerTest` (5 casos), cobrindo os dois tratamentos
+  acima e a garantia de que nem a mensagem do parser nem a da exceção interna vazam na
+  resposta. Suíte passa de 18 para 23 testes. Etapa 12.
 - Auditoria deixa de ser automática (o `AuditingEntityListener` era um recurso do ORM) e
   passa a ser aplicada pelos repositórios; `SpringSecurityAuditorAware` vira `AuditorProvider`
   e o teste correspondente vira `AuditorProviderTest`. Etapas 2 e 12.

@@ -1,7 +1,10 @@
 package com.postech.restaurantes.exception;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -22,6 +25,8 @@ import java.util.Map;
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ProblemDetail handleNotFound(ResourceNotFoundException ex) {
@@ -86,6 +91,23 @@ public class GlobalExceptionHandler {
                 "O parâmetro '" + ex.getName() + "' está em formato inválido");
     }
 
+    /**
+     * Corpo da requisição ausente ou que o Jackson não consegue desserializar
+     * (JSON malformado, tipo incompatível). Assim como o descasamento de tipo
+     * acima, é um erro do cliente que sem tratamento cairia no handler genérico
+     * e seria reportado como 500.
+     *
+     * A mensagem do parser não é repassada: ela expõe detalhes internos da
+     * desserialização sem ajudar quem chama a API.
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ProblemDetail handleMessageNotReadable(HttpMessageNotReadableException ex) {
+        log.debug("Corpo de requisição ilegível", ex);
+        return build(HttpStatus.BAD_REQUEST, ProblemType.REQUISICAO_INVALIDA,
+                "Requisição inválida",
+                "O corpo da requisição está ausente ou malformado");
+    }
+
     /** Falhas de validação dos VOs de valor (ex.: e-mail/CEP malformado). */
     @ExceptionHandler(IllegalArgumentException.class)
     public ProblemDetail handleIllegalArgument(IllegalArgumentException ex) {
@@ -100,8 +122,15 @@ public class GlobalExceptionHandler {
                 "Falha na autenticação", "Login ou senha inválidos");
     }
 
+    /**
+     * Rede de segurança para o que não foi previsto. A resposta é deliberadamente
+     * genérica, para não vazar detalhes internos ao cliente — e é justamente por
+     * isso que a exceção precisa ser registrada aqui: sem este log, um 500 não
+     * deixa rastro algum e a causa se perde.
+     */
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleGeneric(Exception ex) {
+        log.error("Erro não tratado processando a requisição", ex);
         return build(HttpStatus.INTERNAL_SERVER_ERROR, ProblemType.ERRO_INTERNO,
                 "Erro inesperado", "Ocorreu um erro interno. Tente novamente mais tarde.");
     }
