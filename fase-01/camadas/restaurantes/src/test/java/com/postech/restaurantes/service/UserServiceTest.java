@@ -50,6 +50,7 @@ class UserServiceTest {
     @Mock private RoleRepository roleRepository;
     @Mock private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     @Mock private UserMapper userMapper;
+    @Mock private AddressMapper addressMapper;
 
     @InjectMocks private UserService userService;
 
