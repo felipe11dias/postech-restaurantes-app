@@ -6,9 +6,16 @@ import com.postech.restaurantes.domain.util.TextUtils;
 import java.util.regex.Pattern;
 
 /**
- * Value Object de e-mail do domínio. Garante a invariante de formato e normaliza
- * para minúsculas na construção — normalização que sustenta a regra de negócio
- * de e-mail único (duas grafias do mesmo endereço comparam iguais).
+ * Value Object de e-mail do domínio.
+ *
+ * <p>Garante a invariante de formato e normaliza para minúsculas na construção.
+ * A normalização não é cosmética: é ela que sustenta a regra de negócio de e-mail
+ * único, porque faz {@code Joao@Email.com} e {@code joao@email.com} compararem
+ * iguais antes de a checagem de duplicidade acontecer. Sem isso, a mesma pessoa
+ * conseguiria se cadastrar duas vezes só variando a caixa das letras.</p>
+ *
+ * <p>Sendo do domínio, não conhece Jackson nem JPA — quem converte JSON em
+ * {@code Email} é o adapter de entrada.</p>
  */
 public record Email(String value) {
 
@@ -18,10 +25,15 @@ public record Email(String value) {
     public Email {
         value = TextUtils.toLowerNormalized(value);
         if (value == null || value.isBlank()) {
-            throw new InvalidEmailException("E-mail é obrigatório");
+            throw InvalidEmailException.required();
         }
         if (!PATTERN.matcher(value).matches()) {
-            throw new InvalidEmailException(String.format("E-mail: %s é inválido", value));
+            throw InvalidEmailException.malformed(value);
         }
+    }
+
+    @Override
+    public String toString() {
+        return value;
     }
 }
