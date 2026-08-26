@@ -48,8 +48,8 @@ núcleo foi escrito e testado antes de existir qualquer banco, HTTP ou framework
 ## Sprint 0 — Build e infraestrutura
 
 **Escopo.** Alinhar o `pom.xml` da variante hexagonal à stack final da variante em camadas
-(Java 21, JDBC, sem Lombok, sem MapStruct); ajustar `application.yml`, `.env.example` e
-`docker-compose.yml`.
+(Java 21, JDBC, sem Lombok — e, aqui, também sem MapStruct); ajustar `application.yml`,
+`.env.example` e `docker-compose.yml`.
 
 **Decisão que define a sprint.** O scaffold original previa Spring Data JPA + MapStruct +
 Lombok. A variante em camadas, porém, evoluiu para JDBC puro e Java sem Lombok. Manter
