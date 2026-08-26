@@ -4,7 +4,7 @@ Parte do monorepo [`postech`](../../../README.md) ▸ [Fase 1](../../README.md).
 da **Fase 1** do Tech Challenge sob **arquitetura em camadas** (`controller` → `service` →
 `repository`, SOLID + Clean Code) — esta é a **variante entregável oficial** da fase, com uma
 variante comparativa em [Arquitetura Hexagonal](../../hexagonal/restaurantes/) (Ports &
-Adapters, em andamento).
+Adapters), também concluída.
 
 Backend em Spring Boot para gestão de usuários (donos de restaurante e clientes), com
 autenticação JWT, banco PostgreSQL e orquestração via Docker Compose.
@@ -199,9 +199,15 @@ uma data de criação seja sobrescrita por engano.
 mvn test
 ```
 
-- **ArchUnit** (`ArchitectureTest`): valida as regras da arquitetura em camadas.
-- **JUnit + Mockito** (`UserServiceTest`): cobre as regras de negócio do serviço de usuário.
-- **JUnit** (`AuditorProviderTest`): cobre a resolução do auditor
+23 testes, nenhum deles subindo banco:
+
+- **ArchUnit** (`ArchitectureTest`, 5 regras): valida as regras da arquitetura em camadas.
+- **JUnit + Mockito** (`UserServiceTest`, 10 testes): cobre as regras de negócio do serviço
+  de usuário.
+- **JUnit + Mockito** (`GlobalExceptionHandlerTest`, 5 testes): cobre o tratamento de corpo
+  malformado e de id inválido, e garante que nem a mensagem do parser nem a da exceção
+  interna vazem na resposta.
+- **JUnit** (`AuditorProviderTest`, 3 testes): cobre a resolução do auditor
   (usuário autenticado, contexto anônimo e ausência de autenticação).
 
 ## Estrutura
@@ -210,5 +216,6 @@ Arquitetura em camadas: `controller` → `service` → `repository`, com `entity
 domínio e `vo` (Value Objects versionados) nos contratos da API. Detalhes no
 [relatório técnico da fase](../../relatorios/camadas/relatorio-tech-challenge-fase01-v1.1.md).
 
-> Esta é a variante **em camadas**. A mesma Fase 1 também é implementada com
-> [arquitetura hexagonal](../../hexagonal/restaurantes/) como desafio de estudo.
+> Esta é a variante **em camadas**. A mesma Fase 1 também está implementada, sobre a mesma
+> stack, com [arquitetura hexagonal](../../hexagonal/restaurantes/) — a comparação entre as
+> duas está em [`fase-01/README.md`](../../README.md).

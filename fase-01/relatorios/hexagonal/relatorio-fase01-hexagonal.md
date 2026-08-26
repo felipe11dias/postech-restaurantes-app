@@ -9,10 +9,10 @@
 
 > **Sobre esta versão.** A v1.0 descrevia um projeto planejado: marcava as treze etapas como
 > concluídas quando existia apenas o esqueleto de pacotes e um modelo de domínio parcial, e
-> documentava decisões (Spring Data JPA, MapStruct, Lombok, ids `BIGINT`) que a variante em
-> camadas já havia revertido. Esta v2.0 descreve **o que foi efetivamente construído e
-> verificado**: 80 testes automatizados passando e a aplicação exercitada end-to-end sobre
-> Docker. Onde uma decisão tem custo, o custo está registrado.
+> documentava decisões (Spring Data JPA, Lombok, ids `BIGINT`) que a variante em camadas já
+> havia revertido — mais um MapStruct que esta variante dispensou. Esta v2.0 descreve **o que
+> foi efetivamente construído e verificado**: 80 testes automatizados passando e a aplicação
+> exercitada end-to-end sobre Docker. Onde uma decisão tem custo, o custo está registrado.
 
 ---
 
@@ -69,13 +69,17 @@ depende de detalhes; os detalhes é que dependem do núcleo.
 Este projeto é a segunda implementação dos mesmos requisitos — a primeira está em
 [`camadas/restaurantes/`](../../camadas/restaurantes/). Para que a comparação signifique
 alguma coisa, **a stack das duas é deliberadamente idêntica**: Java 21, JDBC puro com
-`JdbcTemplate`, sem Lombok e sem MapStruct, PostgreSQL, Flyway, JWT, ids em UUID.
+`JdbcTemplate`, sem Lombok, PostgreSQL, Flyway, JWT, ids em UUID. A única biblioteca que não
+se repete é o MapStruct — a variante em camadas o usa no mapeamento VO ↔ entidade, e aqui a
+tradução DTO ↔ command/view ↔ domínio é escrita à mão, para que nenhuma geração de código
+atravesse a fronteira do núcleo.
 
 Isso foi uma correção de rumo. O esqueleto original do hexagonal previa Spring Data JPA,
-MapStruct e Lombok, enquanto a variante em camadas havia migrado para JDBC e Java puro. Se
-as duas tivessem stacks diferentes, qualquer diferença observada — em legibilidade, em
-esforço de teste, em acoplamento — poderia ser atribuída à troca de tecnologia em vez do
-desenho arquitetural. **Com a stack fixa, a única variável é a arquitetura.**
+MapStruct e Lombok, enquanto a variante em camadas havia migrado para JDBC e Java sem
+Lombok. Se as duas tivessem stacks diferentes, qualquer diferença observada — em
+legibilidade, em esforço de teste, em acoplamento — poderia ser atribuída à troca de
+tecnologia em vez do desenho arquitetural. **Com a stack fixa, a única variável é a
+arquitetura.**
 
 ### Anatomia do hexágono
 
