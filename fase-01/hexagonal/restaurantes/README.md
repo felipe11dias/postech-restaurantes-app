@@ -12,10 +12,14 @@ só a arquitetura**.
 
 ## Por que a stack é idêntica à da variante em camadas
 
-Java 21, JDBC puro, sem Lombok e sem MapStruct — exatamente como a outra variante. Se as
-duas tivessem stacks diferentes, qualquer diferença observada (em legibilidade, esforço de
-teste, acoplamento) poderia ser atribuída à troca de tecnologia em vez do desenho
-arquitetural. Com a stack fixa, **a única variável é a arquitetura**.
+Java 21, JDBC puro, sem Lombok, PostgreSQL, Flyway, JWT e ids em UUID — exatamente como a
+outra variante. Se as duas tivessem stacks diferentes, qualquer diferença observada (em
+legibilidade, esforço de teste, acoplamento) poderia ser atribuída à troca de tecnologia em
+vez do desenho arquitetural. Com a stack fixa, **a única variável é a arquitetura**.
+
+A exceção é o MapStruct, que a variante em camadas usa no mapeamento VO ↔ entidade e que aqui
+não entra: a tradução DTO ↔ command/view ↔ domínio é escrita à mão, para que nenhuma geração
+de código atravesse a fronteira do núcleo.
 
 ## Stack
 

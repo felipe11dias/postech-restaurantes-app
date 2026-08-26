@@ -20,15 +20,20 @@ Backend em Spring Boot para gestão de usuários (donos de restaurante e cliente
 autenticação JWT, banco PostgreSQL e orquestração via Docker Compose.
 
 Como desafio de estudo, a **mesma Fase 1** é implementada em **duas arquiteturas** lado a
-lado:
+lado, e **as duas estão concluídas**:
 
 | Variante | Código-fonte | Relatório | Status |
 |----------|--------------|-----------|--------|
-| **Em camadas** (SOLID + Clean Code) — entregável oficial | [`fase-01/camadas/restaurantes/`](fase-01/camadas/restaurantes/) | [`fase-01/relatorios/camadas/`](fase-01/relatorios/camadas/) | ✅ completo |
-| **Hexagonal** (Ports & Adapters) — variante comparativa | [`fase-01/hexagonal/restaurantes/`](fase-01/hexagonal/restaurantes/) | [`fase-01/relatorios/hexagonal/`](fase-01/relatorios/hexagonal/) | 🔄 Etapa 1 (scaffold) |
+| **Em camadas** (SOLID + Clean Code) — entregável oficial | [`fase-01/camadas/restaurantes/`](fase-01/camadas/restaurantes/) | [`fase-01/relatorios/camadas/`](fase-01/relatorios/camadas/) | ✅ completo (23 testes) |
+| **Hexagonal** (Ports & Adapters) — variante comparativa | [`fase-01/hexagonal/restaurantes/`](fase-01/hexagonal/restaurantes/) | [`fase-01/relatorios/hexagonal/`](fase-01/relatorios/hexagonal/) | ✅ completo (80 testes) |
+
+As duas variantes cobrem os mesmos requisitos sobre **a mesma stack** (Java 21, JDBC puro
+com `JdbcTemplate`, sem Lombok, PostgreSQL, Flyway, JWT, ids em UUID). A stack é fixa de
+propósito: assim **a única variável entre elas é a arquitetura**. A leitura comparativa —
+inclusive do que o hexagonal cobra em troca — está em [`fase-01/README.md`](fase-01/README.md).
 
 - **Como executar / detalhes:** ver [`fase-01/README.md`](fase-01/README.md) e o README de
-  cada projeto.
+  cada projeto. As duas usam as portas `8080`/`5432` — rode uma de cada vez.
 
 ## Estrutura do repositório
 
@@ -37,12 +42,14 @@ postech/
 ├── README.md                     # este índice
 ├── .gitignore
 └── fase-01/
-    ├── README.md                 # índice da fase
+    ├── README.md                 # índice da fase e comparação entre as variantes
     ├── camadas/
     │   └── restaurantes/         # aplicação Spring Boot (arquitetura em camadas)
+    │       └── postman/          # coleção de testes
     ├── hexagonal/
-    │   └── restaurantes/         # aplicação Spring Boot (arquitetura hexagonal)
+    │   └── restaurantes/         # aplicação Spring Boot (Ports & Adapters)
+    │       └── postman/          # coleção de testes
     └── relatorios/               # entregáveis oficiais (Markdown → PDF)
-        ├── camadas/
-        └── hexagonal/
+        ├── camadas/              # relatório + CHANGELOG
+        └── hexagonal/            # relatório + CHANGELOG + plano de sprints
 ```

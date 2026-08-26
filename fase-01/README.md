@@ -18,10 +18,14 @@ comparar as abordagens sobre o mesmo conjunto de requisitos:
 
 ### A comparação é controlada
 
-As duas variantes usam **a mesma stack**: Java 21, JDBC puro com `JdbcTemplate`, sem Lombok
-e sem MapStruct, PostgreSQL, Flyway, JWT, ids em UUID. Isso é deliberado — se as stacks
-diferissem, qualquer diferença observada entre elas poderia ser atribuída à tecnologia em vez
-do desenho arquitetural. **Com a stack fixa, a única variável é a arquitetura.**
+As duas variantes usam **a mesma stack**: Java 21, JDBC puro com `JdbcTemplate`, sem Lombok,
+PostgreSQL, Flyway, JWT, ids em UUID. Isso é deliberado — se as stacks diferissem, qualquer
+diferença observada entre elas poderia ser atribuída à tecnologia em vez do desenho
+arquitetural. **Com a stack fixa, a única variável é a arquitetura.**
+
+A única biblioteca que não se repete é o MapStruct: a variante em camadas o usa no mapeamento
+VO ↔ entidade; o hexagonal escreve à mão a tradução DTO ↔ command/view ↔ domínio, para que
+nenhuma geração de código atravesse a fronteira do núcleo.
 
 Diferenças que valem a leitura lado a lado:
 
@@ -32,7 +36,8 @@ Diferenças que valem a leitura lado a lado:
 | Autenticação | delegada ao `AuthenticationManager` | regra explícita no caso de uso |
 | Representações por requisição | 2 (DTO ↔ entidade) | 3 (DTO ↔ command/view ↔ domínio) |
 | Testar uma regra | mock de repositório Spring | mock de interfaces próprias, sem framework |
-| Arquitetura verificada | ArchUnit (camadas) | ArchUnit (regra de dependência do hexágono) |
+| Arquitetura verificada | ArchUnit — 5 regras de camadas | ArchUnit — 9 regras da regra de dependência |
+| Suíte automatizada | 23 testes | 80 testes |
 
 O custo do hexagonal é real e está registrado no relatório: mais uma camada de mapeamento e
 uma raiz de composição para manter. O ganho é um núcleo que compila e roda sem framework.
@@ -62,7 +67,8 @@ fase-01/
     │   └── CHANGELOG.md
     └── hexagonal/
         ├── relatorio-fase01-hexagonal.md   # relatório técnico (v2.0)
-        └── plano-de-sprints.md             # roteiro de execução, sprint a sprint
+        ├── plano-de-sprints.md             # roteiro de execução, sprint a sprint
+        └── CHANGELOG.md                    # histórico de versões do relatório
 ```
 
 ## Entregáveis da fase
@@ -74,7 +80,7 @@ fase-01/
 | README do projeto | ✅ | ✅ |
 | Documentação Swagger | ✅ gerada pela app | ✅ gerada pela app |
 | Coleção Postman (JSON) | ✅ `camadas/restaurantes/postman/` | ✅ `hexagonal/restaurantes/postman/` |
-| Testes automatizados | ✅ | ✅ 80 testes |
+| Testes automatizados | ✅ 23 testes | ✅ 80 testes |
 
 ## Executando
 
@@ -87,5 +93,6 @@ cd fase-01/hexagonal/restaurantes && docker compose up --build
 
 ## Versionamento
 
-- Cada relatório segue versionamento próprio (ver o `CHANGELOG.md` da variante camadas).
+- Cada relatório segue versionamento próprio, com `CHANGELOG.md` na pasta da variante
+  ([camadas](relatorios/camadas/CHANGELOG.md) · [hexagonal](relatorios/hexagonal/CHANGELOG.md)).
 - Os contratos da API (DTOs de request/response) são versionados no código sob `v1`.
