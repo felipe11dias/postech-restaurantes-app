@@ -1,0 +1,742 @@
+{
+  "info": {
+    "name": "Restaurantes — Fase 1 (Hexagonal)",
+    "description": "Tech Challenge Fase 1 — variante em Arquitetura Hexagonal (Ports & Adapters).\n\nOrdem sugerida: Autenticação > Login (salva o token) e depois os demais.\n\nVariáveis: baseUrl, token, userId, adminToken, resetToken.\n\nO token de redefinição de senha nunca é retornado pela API. Recupere-o do log:\n  docker logs restaurantes-hex-app | grep \"Token de redefinição\"\ne cole em {{resetToken}}.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080/api/v1" },
+    { "key": "token", "value": "" },
+    { "key": "adminToken", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "resetToken", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Autenticação",
+      "item": [
+        {
+          "name": "Login válido (dono) — 200, salva token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('devolve token Bearer', () => {",
+                  "  pm.expect(body.token).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.type).to.eql('Bearer');",
+                  "});",
+                  "pm.collectionVariables.set('token', body.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"dono.restaurante\",\n  \"password\": \"dono12345\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login admin — 200, salva adminToken",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('adminToken', pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"admin.demo\",\n  \"password\": \"admin12345\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login com senha errada — 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('mensagem não revela se o login existe', () => {",
+                  "  pm.expect(pm.response.json().detail).to.eql('Login ou senha inválidos');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"dono.restaurante\",\n  \"password\": \"senha-errada\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login inexistente — 401 idêntico",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('resposta idêntica à de senha errada', () => {",
+                  "  pm.expect(pm.response.json().detail).to.eql('Login ou senha inválidos');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"nao.existe\",\n  \"password\": \"qualquer123\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cadastro",
+      "item": [
+        {
+          "name": "Cadastro válido — 201, salva userId",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('e-mail normalizado para minúsculas', () => {",
+                  "  pm.expect(body.email).to.eql('joana@email.com');",
+                  "});",
+                  "pm.test('nunca expõe senha', () => {",
+                  "  pm.expect(pm.response.text()).to.not.include('password');",
+                  "});",
+                  "pm.test('traz links HATEOAS', () => pm.expect(body._links.self).to.exist);",
+                  "pm.collectionVariables.set('userId', body.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/users", "host": ["{{baseUrl}}"], "path": ["users"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Joana Teste\",\n  \"email\": \"Joana@Email.COM\",\n  \"login\": \"joana.teste\",\n  \"password\": \"senha12345\",\n  \"roles\": [\"ROLE_CUSTOMER\"],\n  \"addresses\": [\n    {\n      \"street\": \"Av. Paulista\",\n      \"number\": \"1500\",\n      \"complement\": \"Apto 42\",\n      \"neighborhood\": \"Bela Vista\",\n      \"city\": \"São Paulo\",\n      \"state\": \"SP\",\n      \"zipCode\": \"01310-200\"\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "E-mail duplicado (outra caixa) — 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409 Conflict', () => pm.response.to.have.status(409));",
+                  "pm.test('a normalização faz JOANA@ colidir com joana@', () => {",
+                  "  pm.expect(pm.response.json().type).to.eql('/problemas/conflito-de-dados');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/users", "host": ["{{baseUrl}}"], "path": ["users"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Outra Pessoa\",\n  \"email\": \"JOANA@email.com\",\n  \"login\": \"outra.pessoa\",\n  \"password\": \"senha12345\",\n  \"roles\": [\"ROLE_CUSTOMER\"]\n}"
+            }
+          }
+        },
+        {
+          "name": "Autocadastro como ADMIN — 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403 Forbidden', () => pm.response.to.have.status(403));",
+                  "pm.test('regra de negócio bloqueia papel privilegiado', () => {",
+                  "  pm.expect(pm.response.json().type).to.eql('/problemas/operacao-nao-permitida');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/users", "host": ["{{baseUrl}}"], "path": ["users"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tentativa Admin\",\n  \"email\": \"tentativa@email.com\",\n  \"login\": \"tentativa.admin\",\n  \"password\": \"senha12345\",\n  \"roles\": [\"ROLE_ADMIN\"]\n}"
+            }
+          }
+        },
+        {
+          "name": "Campos inválidos — 400 com lista de erros",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('agrega todos os campos inválidos', () => {",
+                  "  const errors = pm.response.json().errors;",
+                  "  pm.expect(errors).to.have.property('name');",
+                  "  pm.expect(errors).to.have.property('email');",
+                  "  pm.expect(errors).to.have.property('password');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/users", "host": ["{{baseUrl}}"], "path": ["users"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\",\n  \"email\": \"nao-e-email\",\n  \"login\": \"\",\n  \"password\": \"123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "CEP inválido — 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('400 Bad Request', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/users", "host": ["{{baseUrl}}"], "path": ["users"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"CEP Ruim\",\n  \"email\": \"cep@email.com\",\n  \"login\": \"cep.ruim\",\n  \"password\": \"senha12345\",\n  \"roles\": [\"ROLE_CUSTOMER\"],\n  \"addresses\": [\n    {\n      \"street\": \"Rua X\",\n      \"city\": \"Fortaleza\",\n      \"state\": \"CE\",\n      \"zipCode\": \"123\"\n    }\n  ]\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Consulta",
+      "item": [
+        {
+          "name": "Sem token — 401 ProblemDetail",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('erro no padrão ProblemDetail', () => {",
+                  "  pm.expect(pm.response.json().type).to.eql('/problemas/nao-autenticado');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}"] }
+          }
+        },
+        {
+          "name": "Consulta do próprio usuário — 200",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// autentica como a usuária criada, para exercitar a posse do recurso",
+                  "pm.sendRequest({",
+                  "  url: pm.collectionVariables.get('baseUrl') + '/auth/login',",
+                  "  method: 'POST',",
+                  "  header: { 'Content-Type': 'application/json' },",
+                  "  body: { mode: 'raw', raw: JSON.stringify({ login: 'joana.teste', password: 'senha12345' }) }",
+                  "}, (err, res) => {",
+                  "  if (!err && res.code === 200) pm.collectionVariables.set('token', res.json().token);",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('200 OK', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}"] }
+          }
+        },
+        {
+          "name": "Busca por nome (paginada) — 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('traz metadados de paginação', () => {",
+                  "  pm.expect(pm.response.json().page).to.have.property('totalElements');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/users?name=Joana&page=0&size=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"],
+              "query": [
+                { "key": "name", "value": "Joana" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Busca com acento (Demonstração) — 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('200 OK', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/users?name=Demonstração",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"],
+              "query": [{ "key": "name", "value": "Demonstração" }]
+            }
+          }
+        },
+        {
+          "name": "Id não-UUID — 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('400 Bad Request', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{baseUrl}}/users/nao-e-uuid", "host": ["{{baseUrl}}"], "path": ["users", "nao-e-uuid"] }
+          }
+        },
+        {
+          "name": "ADMIN acessa qualquer usuário — 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('200 OK', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Atualização e senha",
+      "item": [
+        {
+          "name": "Atualiza dados — 200 (senha intacta)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.test('nome atualizado', () => {",
+                  "  pm.expect(pm.response.json().name).to.eql('Joana Atualizada');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Joana Atualizada\",\n  \"email\": \"joana@email.com\",\n  \"login\": \"joana.teste\",\n  \"addresses\": [\n    {\n      \"street\": \"Rua Nova\",\n      \"number\": \"10\",\n      \"neighborhood\": \"Centro\",\n      \"city\": \"Campinas\",\n      \"state\": \"SP\",\n      \"zipCode\": \"13010-000\"\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Atualiza para e-mail de outro — 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('409 Conflict', () => pm.response.to.have.status(409));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Joana Atualizada\",\n  \"email\": \"dono@restaurante.com\",\n  \"login\": \"joana.teste\",\n  \"addresses\": []\n}"
+            }
+          }
+        },
+        {
+          "name": "Troca de senha — 204",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('204 No Content', () => pm.response.to.have.status(204));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/password",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}", "password"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"senha12345\",\n  \"newPassword\": \"novaSenha123\",\n  \"confirmPassword\": \"novaSenha123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Troca com senha atual errada — 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('type de senha inválida', () => {",
+                  "  pm.expect(pm.response.json().type).to.eql('/problemas/senha-invalida');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/password",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}", "password"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"errada\",\n  \"newPassword\": \"outraSenha123\",\n  \"confirmPassword\": \"outraSenha123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Troca com confirmação divergente — 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('400 Bad Request', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/password",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}", "password"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"novaSenha123\",\n  \"newPassword\": \"outraSenha123\",\n  \"confirmPassword\": \"naoCoincide123\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Recuperação de senha",
+      "item": [
+        {
+          "name": "Forgot — e-mail existente — 202",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('202 Accepted', () => pm.response.to.have.status(202));",
+                  "// Pegue o token no log:",
+                  "//   docker logs restaurantes-hex-app | grep \"Token de redefinição\"",
+                  "// e cole na variável resetToken."
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/auth/forgot-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "forgot-password"]
+            },
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"joana@email.com\"\n}" }
+          }
+        },
+        {
+          "name": "Forgot — e-mail inexistente — 202 idêntico",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('202 Accepted', () => pm.response.to.have.status(202));",
+                  "pm.test('sem corpo que diferencie do caso existente', () => {",
+                  "  pm.expect(pm.response.text()).to.be.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/auth/forgot-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "forgot-password"]
+            },
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"ninguem@email.com\"\n}" }
+          }
+        },
+        {
+          "name": "Reset com token do log — 204",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('204 No Content', () => pm.response.to.have.status(204));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/auth/reset-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "reset-password"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"resetada123\",\n  \"confirmPassword\": \"resetada123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Reuso do mesmo token — 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('token de uso único já foi gasto', () => {",
+                  "  pm.expect(pm.response.json().detail).to.eql('Token inválido ou expirado');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/auth/reset-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "reset-password"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"outraSenha123\",\n  \"confirmPassword\": \"outraSenha123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Reset com token inexistente — 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('400 Bad Request', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/auth/reset-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "reset-password"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"token-que-nao-existe\",\n  \"newPassword\": \"outraSenha123\",\n  \"confirmPassword\": \"outraSenha123\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Exclusão",
+      "item": [
+        {
+          "name": "Exclui usuário (admin) — 204",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('204 No Content', () => pm.response.to.have.status(204));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}"] }
+          }
+        },
+        {
+          "name": "Exclui de novo — 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));",
+                  "pm.test('não finge sucesso ao excluir id inexistente', () => {",
+                  "  pm.expect(pm.response.json().type).to.eql('/problemas/recurso-nao-encontrado');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/users/{{userId}}", "host": ["{{baseUrl}}"], "path": ["users", "{{userId}}"] }
+          }
+        }
+      ]
+    }
+  ]
+}

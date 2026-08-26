@@ -1,92 +1,155 @@
 # Sistema de Gestão de Restaurantes — Tech Challenge Fase 1 (Arquitetura Hexagonal)
 
 Implementação da **Fase 1** do Tech Challenge sob **Arquitetura Hexagonal (Ports &
-Adapters)**, como variante de estudo da versão em camadas
-([`../../camadas/restaurantes/`](../../camadas/restaurantes/)). O objetivo é o mesmo
-sistema de gestão de usuários (donos de restaurante e clientes), mas com o domínio isolado
-de framework.
+Adapters)**, como variante comparativa da versão em camadas
+([`../../camadas/restaurantes/`](../../camadas/restaurantes/)). Mesmo sistema de gestão de
+usuários (donos de restaurante e clientes), mesmos requisitos, mesma stack — **o que muda é
+só a arquitetura**.
 
-> **Status: Etapa 1 — Setup do Projeto e Estrutura Hexagonal (scaffold).**
-> Este projeto contém, por enquanto, apenas o esqueleto: build, infraestrutura e a árvore
-> de pacotes do hexágono. Domínio, casos de uso, adapters e migrations chegam nas etapas
-> seguintes. Ver o [relatório técnico hexagonal](../../relatorios/hexagonal/relatorio-fase01-hexagonal.md).
+> **Status: completo.** 80 testes automatizados passando e a aplicação verificada
+> end-to-end sobre Docker. Ver o [relatório técnico](../../relatorios/hexagonal/relatorio-fase01-hexagonal.md)
+> e o [plano de sprints](../../relatorios/hexagonal/plano-de-sprints.md).
+
+## Por que a stack é idêntica à da variante em camadas
+
+Java 21, JDBC puro, sem Lombok e sem MapStruct — exatamente como a outra variante. Se as
+duas tivessem stacks diferentes, qualquer diferença observada (em legibilidade, esforço de
+teste, acoplamento) poderia ser atribuída à troca de tecnologia em vez do desenho
+arquitetural. Com a stack fixa, **a única variável é a arquitetura**.
 
 ## Stack
 
 - Java 21 · Spring Boot 3.5.x
-- Spring Web (adapter de entrada REST) · Spring Data JPA + Flyway (adapter de persistência)
-- Spring Security · jjwt (adapter de segurança JWT/BCrypt)
-- Bean Validation · springdoc-openapi (Swagger) · Spring Boot Actuator
-- MapStruct (mapeamento domínio ↔ VO web ↔ entidade JPA) · Lombok
+- Spring Web (adapter de entrada REST) · Spring JDBC + Flyway (adapter de persistência)
+- Spring Security · jjwt (adapters de segurança JWT/BCrypt) · Spring Mail
+- Bean Validation · springdoc-openapi (Swagger) · Spring HATEOAS · Actuator
 - JUnit 5 · Mockito · ArchUnit (verificação da regra de dependência do hexágono)
 
 ## Estrutura de pacotes (por arquitetura, não por camada técnica)
 
 ```
 com.postech.restaurantes
-├── RestaurantesApplication.java   # @SpringBootApplication (bootstrap)
-├── domain/                        # NÚCLEO — sem dependências de framework
-│   ├── model/                     # entidades de domínio puras (POJOs)
-│   ├── vo/                        # Value Objects (Email, ZipCode...)
-│   └── exception/                 # exceções de domínio
-├── application/
-│   ├── port/
-│   │   ├── in/                    # Input Ports: casos de uso (interfaces)
-│   │   └── out/                   # Output Ports: contratos de infraestrutura (interfaces)
-│   └── service/                   # serviços de aplicação (implementam os input ports)
-└── adapter/
-    ├── in/
-    │   └── web/                   # controllers REST, VOs request/response, ProblemDetail, Swagger
-    └── out/
-        ├── persistence/           # entidades JPA, repos Spring Data, adapter dos output ports
-        └── security/              # BCrypt e JWT como adapters dos output ports
+├── RestaurantesApplication.java
+├── domain/                        # NÚCLEO — Java puro, zero dependências externas
+│   ├── model/                     # User, Address, Role, PasswordResetToken
+│   │   └── shared/                # Email, ZipCode (Value Objects)
+│   ├── exception/                 # DomainException e descendentes
+│   └── util/
+├── application/                   # também sem framework
+│   ├── pagination/                # PageQuery, PageResult (paginação própria)
+│   ├── port/in/                   # casos de uso + commands + views
+│   ├── port/out/                  # contratos de infraestrutura
+│   └── service/                   # implementações dos casos de uso
+├── adapter/
+│   ├── in/web/                    # controllers, DTOs v1, ProblemDetail, HATEOAS, filtro JWT
+│   └── out/
+│       ├── persistence/           # JDBC + transação
+│       ├── security/              # BCrypt, JWT, token de reset, auditor
+│       └── mail/                  # SMTP
+└── config/                        # raiz de composição (@Bean dos casos de uso, Security, OpenAPI)
 ```
 
-**Regra de dependência:** todas as setas apontam **para dentro**, em direção ao domínio.
-Os adapters dependem dos ports (interfaces da aplicação); o domínio não conhece nenhum
-adapter. As pastas ainda vazias trazem um `.gitkeep` para versionar a estrutura.
+**Regra de dependência:** todas as setas apontam **para dentro**. Os adapters dependem dos
+ports; o núcleo não conhece nenhum adapter. Isso não é convenção — é
+[verificado por ArchUnit](src/test/java/com/postech/restaurantes/architecture/HexagonalArchitectureTest.java)
+a cada build.
 
-## Roadmap das etapas (relatório hexagonal)
+**O núcleo não tem uma única anotação de framework.** Os serviços de aplicação são
+instanciados por `@Bean` na [`UseCaseConfiguration`](src/main/java/com/postech/restaurantes/config/UseCaseConfiguration.java),
+não por `@Service`. O custo é manter essa configuração; o ganho é que `domain` e
+`application` compilam e rodam sem Spring no classpath — o que torna os testes de caso de
+uso testes de unidade de verdade.
 
-| Etapa | Camada hexagonal | Status |
-|-------|------------------|--------|
-| 1 · Setup do projeto e estrutura hexagonal | — | ✅ (este scaffold) |
-| 2 · Modelagem do domínio | Domínio | ⏳ |
-| 3–5 · Ports de entrada/saída e serviços | Aplicação | ⏳ |
-| 6 · Adapter de persistência + migrations | Adapter de saída | ⏳ |
-| 7 · Adapter web REST | Adapter de entrada | ⏳ |
-| 8 · Adapter de segurança (JWT/BCrypt) | Adapter de saída | ⏳ |
-| 9–10 · ProblemDetail + Swagger | Adapter de entrada | ⏳ |
-| 11 · Docker Compose | — | ✅ (infra pronta) |
-| 12 · Testes (domínio, use cases, ArchUnit) | Transversal | ⏳ |
-
-## Como executar (infra já disponível)
-
-> Ainda sem endpoints — o scaffold sobe vazio. Útil para validar a infraestrutura.
+## Como executar
 
 ```bash
-# 1. (Opcional) criar seu .env a partir do exemplo
 cp .env.example .env
+```
 
-# 2. Subir aplicação + banco
+```bash
 docker compose up --build
 ```
 
-Aplicação em `http://localhost:8080`. Como as duas variantes (camadas e hexagonal) usam as
-portas `8080`/`5432`, **rode uma de cada vez**; os containers e o volume desta variante têm
-sufixo `-hex` para não conflitar.
+Aplicação em `http://localhost:8080` · Swagger em `http://localhost:8080/swagger-ui.html`.
+
+As duas variantes usam as portas `8080`/`5432` — **rode uma de cada vez**. Os containers e o
+volume desta têm sufixo `-hex` para não conflitar.
+
+Para encerrar:
+
+```bash
+docker compose down
+```
+
+(use `docker compose down -v` para apagar também os dados)
+
+## Usuários de demonstração
+
+Criados pela migration `V2`. **Apenas para demonstração.**
+
+| Login | Senha | Papel |
+|-------|-------|-------|
+| `dono.restaurante` | `dono12345` | ROLE_OWNER |
+| `cliente.demo` | `cliente12345` | ROLE_CUSTOMER |
+| `admin.demo` | `admin12345` | ROLE_ADMIN |
+
+O papel `ROLE_ADMIN` **não** pode ser obtido pelo autocadastro público — só por seed.
+
+## Fluxo de autenticação
+
+1. `POST /api/v1/auth/login` com `login` e `password` → devolve o token.
+2. Enviar `Authorization: Bearer <token>` nas demais requisições.
+
+Endpoints públicos: login, recuperação de senha, autocadastro (`POST /api/v1/users`),
+Swagger e health. O restante exige token.
+
+## Endpoints
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `POST` | `/api/v1/users` | Cadastro (público) |
+| `GET` | `/api/v1/users/{id}` | Consulta por id |
+| `GET` | `/api/v1/users?name=` | Lista/busca por nome (paginada) |
+| `PUT` | `/api/v1/users/{id}` | Atualiza dados (não altera senha) |
+| `PATCH` | `/api/v1/users/{id}/password` | Troca de senha (endpoint exclusivo) |
+| `DELETE` | `/api/v1/users/{id}` | Exclusão |
+| `POST` | `/api/v1/auth/login` | Validação de login |
+| `POST` | `/api/v1/auth/forgot-password` | Solicita token de redefinição |
+| `POST` | `/api/v1/auth/reset-password` | Redefine a senha com o token |
+
+Autorização: um usuário só acessa o próprio registro; `ROLE_ADMIN` acessa qualquer um.
+
+### Recuperação de senha sem servidor SMTP
+
+O token é enviado por e-mail e **nunca** retornado pela API. Sem um SMTP configurado, o envio
+falha silenciosamente (de propósito — ver abaixo), mas o token é registrado em log:
+
+```bash
+docker logs restaurantes-hex-app | grep "Token de redefinição"
+```
+
+A falha de envio não vira erro HTTP porque a resposta precisa ser idêntica para e-mail
+cadastrado e não cadastrado. Se uma queda de SMTP produzisse 500 só quando a conta existe, a
+diferença de status revelaria quais e-mails estão cadastrados.
+
+## Coleção Postman
+
+`postman/Restaurantes-Hexagonal.postman_collection.json` — importe e use a variável
+`{{baseUrl}}`. O login salva o token automaticamente em `{{token}}`. A coleção cobre casos de
+sucesso e de erro (duplicidade, validação, autorização, senha incorreta, token reusado).
 
 ## Variáveis de ambiente
 
 | Variável | Padrão | Descrição |
 |----------|--------|-----------|
 | `DB_NAME` | `restaurantes-hex` | Nome do banco |
-| `DB_USER` | `postgres` | Usuário do banco |
-| `DB_PASSWORD` | `postgres` | Senha do banco |
-| `DB_HOST` | `localhost` / `db` (compose) | Host do banco |
-| `DB_PORT` | `5432` | Porta do banco |
+| `DB_USER` / `DB_PASSWORD` | `postgres` | Credenciais do banco |
+| `DB_HOST` / `DB_PORT` | `localhost` (`db` no compose) / `5432` | Endereço do banco |
 | `JWT_SECRET` | *(exemplo)* | Segredo do JWT (mín. 256 bits) |
 | `JWT_EXPIRATION` | `3600000` | Expiração do token (ms) |
+| `MAIL_HOST` / `MAIL_PORT` | `localhost` / `1025` | SMTP de envio |
+| `MAIL_FROM` | `no-reply@restaurantes.postech` | Remetente |
+| `MAIL_RESET_TOKEN_EXPIRATION_MINUTES` | `30` | Validade do token de redefinição |
 
 ## Testes
 
@@ -94,5 +157,5 @@ sufixo `-hex` para não conflitar.
 mvn test
 ```
 
-A verificação de arquitetura (ArchUnit) que protege a regra de dependência do hexágono
-entra na Etapa 12.
+80 testes: domínio (sem Spring), casos de uso (mocks dos ports) e nove regras de ArchUnit
+que protegem a regra de dependência do hexágono. Nenhum sobe contexto Spring ou banco.

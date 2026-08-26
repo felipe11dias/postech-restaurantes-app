@@ -14,7 +14,28 @@ comparar as abordagens sobre o mesmo conjunto de requisitos:
 | Variante | Pasta | Arquitetura | Status |
 |----------|-------|-------------|--------|
 | **Camadas** — entregável oficial | [`camadas/restaurantes/`](camadas/restaurantes/) | Em camadas (`controller` → `service` → `repository`), SOLID + Clean Code | ✅ completo |
-| **Hexagonal** — variante comparativa | [`hexagonal/restaurantes/`](hexagonal/restaurantes/) | Ports & Adapters (domínio isolado de framework) | 🔄 Etapa 1 (scaffold) |
+| **Hexagonal** — variante comparativa | [`hexagonal/restaurantes/`](hexagonal/restaurantes/) | Ports & Adapters (domínio isolado de framework) | ✅ completo |
+
+### A comparação é controlada
+
+As duas variantes usam **a mesma stack**: Java 21, JDBC puro com `JdbcTemplate`, sem Lombok
+e sem MapStruct, PostgreSQL, Flyway, JWT, ids em UUID. Isso é deliberado — se as stacks
+diferissem, qualquer diferença observada entre elas poderia ser atribuída à tecnologia em vez
+do desenho arquitetural. **Com a stack fixa, a única variável é a arquitetura.**
+
+Diferenças que valem a leitura lado a lado:
+
+| Aspecto | Camadas | Hexagonal |
+|---------|---------|-----------|
+| Regras de negócio | entidades anêmicas + lógica no `Service` | entidades com invariantes; serviços só orquestram |
+| Dependências do núcleo | `@Service`, `@Transactional`, `Pageable` do Spring | nenhuma anotação; paginação e transação como ports |
+| Autenticação | delegada ao `AuthenticationManager` | regra explícita no caso de uso |
+| Representações por requisição | 2 (DTO ↔ entidade) | 3 (DTO ↔ command/view ↔ domínio) |
+| Testar uma regra | mock de repositório Spring | mock de interfaces próprias, sem framework |
+| Arquitetura verificada | ArchUnit (camadas) | ArchUnit (regra de dependência do hexágono) |
+
+O custo do hexagonal é real e está registrado no relatório: mais uma camada de mapeamento e
+uma raiz de composição para manter. O ganho é um núcleo que compila e roda sem framework.
 
 Os relatórios técnicos (entregável oficial de cada variante) ficam em
 [`relatorios/`](relatorios/), com um subdiretório por arquitetura.
@@ -30,28 +51,41 @@ fase-01/
 │       ├── postman/              # coleção de testes
 │       └── src/...
 ├── hexagonal/
-│   └── restaurantes/             # aplicação Spring Boot (hexagonal) — scaffold Etapa 1
+│   └── restaurantes/             # aplicação Spring Boot (Ports & Adapters)
 │       ├── pom.xml, Dockerfile, docker-compose.yml, .env.example
+│       ├── postman/              # coleção de testes
 │       └── src/...
 └── relatorios/                   # entregáveis oficiais (viram PDF na entrega)
     ├── camadas/
     │   ├── relatorio-tech-challenge-fase01-v1.1.md
-    │   └── CHANGELOG.md           # histórico de versões do relatório
+    │   ├── relatorio-tech-challenge-fase01-v2.md
+    │   └── CHANGELOG.md
     └── hexagonal/
-        └── relatorio-fase01-hexagonal.md
+        ├── relatorio-fase01-hexagonal.md   # relatório técnico (v2.0)
+        └── plano-de-sprints.md             # roteiro de execução, sprint a sprint
 ```
 
 ## Entregáveis da fase
 
 | Entregável | Camadas | Hexagonal |
 |------------|---------|-----------|
-| Relatório técnico (Markdown→PDF) | ✅ `relatorios/camadas/` | 🔄 `relatorios/hexagonal/` |
-| Código-fonte | ✅ `camadas/restaurantes/` | 🔄 `hexagonal/restaurantes/` (scaffold) |
+| Relatório técnico (Markdown→PDF) | ✅ `relatorios/camadas/` | ✅ `relatorios/hexagonal/` |
+| Código-fonte | ✅ `camadas/restaurantes/` | ✅ `hexagonal/restaurantes/` |
 | README do projeto | ✅ | ✅ |
-| Documentação Swagger | ✅ gerada pela app | ⏳ Etapa 10 |
-| Coleção Postman (JSON) | ✅ `camadas/restaurantes/postman/` | ⏳ Etapa 13 |
+| Documentação Swagger | ✅ gerada pela app | ✅ gerada pela app |
+| Coleção Postman (JSON) | ✅ `camadas/restaurantes/postman/` | ✅ `hexagonal/restaurantes/postman/` |
+| Testes automatizados | ✅ | ✅ 80 testes |
+
+## Executando
+
+As duas variantes usam as portas `8080`/`5432` — **rode uma de cada vez**. Os containers e o
+volume da variante hexagonal têm sufixo `-hex` para não conflitar.
+
+```bash
+cd fase-01/hexagonal/restaurantes && docker compose up --build
+```
 
 ## Versionamento
 
 - Cada relatório segue versionamento próprio (ver o `CHANGELOG.md` da variante camadas).
-- Os contratos da API (VOs de request/response) são versionados no código sob `v1`.
+- Os contratos da API (DTOs de request/response) são versionados no código sob `v1`.
