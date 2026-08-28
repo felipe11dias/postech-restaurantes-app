@@ -24,8 +24,8 @@ lado, e **as duas estão concluídas**:
 
 | Variante | Código-fonte | Relatório | Status |
 |----------|--------------|-----------|--------|
-| **Em camadas** (SOLID + Clean Code) — entregável oficial | [`fase-01/camadas/restaurantes/`](fase-01/camadas/restaurantes/) | [`fase-01/relatorios/camadas/`](fase-01/relatorios/camadas/) | ✅ completo (23 testes) |
-| **Hexagonal** (Ports & Adapters) — variante comparativa | [`fase-01/hexagonal/restaurantes/`](fase-01/hexagonal/restaurantes/) | [`fase-01/relatorios/hexagonal/`](fase-01/relatorios/hexagonal/) | ✅ completo (80 testes) |
+| **Em camadas** (SOLID + Clean Code) — entregável oficial | [`fase-01/camadas/restaurantes/`](fase-01/camadas/restaurantes/) | [`fase-01/relatorios/camadas/`](fase-01/relatorios/camadas/) | ✅ completo — 252 testes · 100% cobertura |
+| **Hexagonal** (Ports & Adapters) — variante comparativa | [`fase-01/hexagonal/restaurantes/`](fase-01/hexagonal/restaurantes/) | [`fase-01/relatorios/hexagonal/`](fase-01/relatorios/hexagonal/) | ✅ completo — 290 testes · 100% cobertura |
 
 As duas variantes cobrem os mesmos requisitos sobre **a mesma stack** (Java 21, JDBC puro
 com `JdbcTemplate`, sem Lombok, PostgreSQL, Flyway, JWT, ids em UUID). A stack é fixa de

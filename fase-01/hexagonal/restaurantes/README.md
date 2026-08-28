@@ -6,8 +6,8 @@ Adapters)**, como variante comparativa da versão em camadas
 usuários (donos de restaurante e clientes), mesmos requisitos, mesma stack — **o que muda é
 só a arquitetura**.
 
-> **Status: completo.** 80 testes automatizados passando e a aplicação verificada
-> end-to-end sobre Docker. Ver o [relatório técnico](../../relatorios/hexagonal/relatorio-fase01-hexagonal.md)
+> **Status: completo.** 290 testes automatizados passando (100% de cobertura) e a aplicação
+> verificada end-to-end sobre Docker. Ver o [relatório técnico](../../relatorios/hexagonal/relatorio-fase01-hexagonal.md)
 > e o [plano de sprints](../../relatorios/hexagonal/plano-de-sprints.md).
 
 ## Por que a stack é idêntica à da variante em camadas
@@ -158,8 +158,10 @@ sucesso e de erro (duplicidade, validação, autorização, senha incorreta, tok
 ## Testes
 
 ```bash
-mvn test
+mvn verify
 ```
 
-80 testes: domínio (sem Spring), casos de uso (mocks dos ports) e nove regras de ArchUnit
+290 testes: domínio (sem Spring), casos de uso (mocks dos ports) e nove regras de ArchUnit
 que protegem a regra de dependência do hexágono. Nenhum sobe contexto Spring ou banco.
+A cobertura é de 100% em todos os contadores do JaCoCo e o `jacoco:check` (fase `verify`)
+falha o build se ela cair.

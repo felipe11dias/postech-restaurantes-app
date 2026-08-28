@@ -196,25 +196,24 @@ uma data de criação seja sobrescrita por engano.
 ## Testes
 
 ```bash
-mvn test
+mvn verify
 ```
 
-23 testes, nenhum deles subindo banco:
+252 testes (36 classes), nenhum deles subindo banco. Cobrem entidades, VOs com Bean
+Validation, utilitários, mappers, os repositórios JDBC, a camada de segurança, os services,
+os controllers e o assembler de links — mais 5 regras de ArchUnit (`ArchitectureTest`) que
+travam a arquitetura em camadas.
 
-- **ArchUnit** (`ArchitectureTest`, 5 regras): valida as regras da arquitetura em camadas.
-- **JUnit + Mockito** (`UserServiceTest`, 10 testes): cobre as regras de negócio do serviço
-  de usuário.
-- **JUnit + Mockito** (`GlobalExceptionHandlerTest`, 5 testes): cobre o tratamento de corpo
-  malformado e de id inválido, e garante que nem a mensagem do parser nem a da exceção
-  interna vazem na resposta.
-- **JUnit** (`AuditorProviderTest`, 3 testes): cobre a resolução do auditor
-  (usuário autenticado, contexto anônimo e ausência de autenticação).
+A cobertura é de **100% em todos os contadores do JaCoCo** (instruções, desvios, linhas,
+complexidade, métodos e classes), sem exclusões. O `jacoco:check` roda na fase `verify`
+exigindo `1.00` em cada contador: se a cobertura cair, o build falha.
 
 ## Estrutura
 
 Arquitetura em camadas: `controller` → `service` → `repository`, com `entity`/`enums` no
 domínio e `vo` (Value Objects versionados) nos contratos da API. Detalhes no
-[relatório técnico da fase](../../relatorios/camadas/relatorio-tech-challenge-fase01-v1.1.md).
+[relatório de entrega](<../../relatorios/camadas/Tech Challenge - Entregável.pdf>) e no
+[relatório detalhado da construção](../../relatorios/camadas/relatorio-tech-challenge-fase01-v2.md).
 
 > Esta é a variante **em camadas**. A mesma Fase 1 também está implementada, sobre a mesma
 > stack, com [arquitetura hexagonal](../../hexagonal/restaurantes/) — a comparação entre as
