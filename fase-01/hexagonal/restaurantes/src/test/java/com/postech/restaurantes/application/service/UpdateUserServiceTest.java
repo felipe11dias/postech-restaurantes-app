@@ -129,4 +129,29 @@ class UpdateUserServiceTest {
 
         assertThrows(ResourceNotFoundException.class, () -> service.update(comando(List.of())));
     }
+
+    @Test
+    @DisplayName("recusa login que já pertence a outro usuário")
+    void recusaLoginDeOutroUsuario() {
+        given(loadUserPort.findById(USER_ID))
+                .willReturn(Optional.of(DomainFixtures.usuarioPersistido(USER_ID)));
+        given(checkUserExistsPort.existsByEmailExcluding(anyString(), eq(USER_ID))).willReturn(false);
+        given(checkUserExistsPort.existsByLoginExcluding(anyString(), eq(USER_ID))).willReturn(true);
+
+        assertThrows(DuplicateResourceException.class, () -> service.update(comando(List.of())));
+        verify(saveUserPort, never()).save(any());
+    }
+
+    /** Lista de endereços ausente é tratada como lista vazia, e não como erro. */
+    @Test
+    @DisplayName("atualização sem lista de endereços deixa o usuário sem endereços")
+    void semListaDeEnderecos() {
+        User user = DomainFixtures.usuarioPersistido(USER_ID);
+        given(loadUserPort.findById(USER_ID)).willReturn(Optional.of(user));
+        given(saveUserPort.save(any(User.class))).willAnswer(inv -> inv.getArgument(0));
+
+        service.update(comando(null));
+
+        assertTrue(user.getAddresses().isEmpty());
+    }
 }

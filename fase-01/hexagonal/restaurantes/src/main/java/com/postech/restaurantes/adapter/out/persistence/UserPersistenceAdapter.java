@@ -235,6 +235,13 @@ public class UserPersistenceAdapter
     }
 
     private String ordenacao(PageQuery pageQuery) {
+        // A consulta pode vir sem ordenação declarada (PageQuery.of, ou um Pageable
+        // sem sort): o mapa é imutável e recusa chave nula, então a guarda vem antes
+        // da busca.
+        if (pageQuery.sortBy() == null) {
+            return ORDENACAO_PADRAO;
+        }
+
         String coluna = COLUNAS_ORDENAVEIS.get(pageQuery.sortBy());
         if (coluna == null) {
             return ORDENACAO_PADRAO;
