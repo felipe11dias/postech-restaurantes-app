@@ -1,5 +1,6 @@
 package com.postech.restaurantes.service;
 
+import com.postech.restaurantes.entity.Address;
 import com.postech.restaurantes.entity.Role;
 import com.postech.restaurantes.entity.User;
 import com.postech.restaurantes.enums.RoleName;
@@ -11,8 +12,10 @@ import com.postech.restaurantes.mapper.AddressMapper;
 import com.postech.restaurantes.mapper.UserMapper;
 import com.postech.restaurantes.repository.RoleRepository;
 import com.postech.restaurantes.repository.UserRepository;
+import com.postech.restaurantes.vo.v1.request.AddressRequest;
 import com.postech.restaurantes.vo.v1.request.PasswordChangeRequest;
 import com.postech.restaurantes.vo.v1.request.UserRegistrationRequest;
+import com.postech.restaurantes.vo.v1.request.UserUpdateRequest;
 import com.postech.restaurantes.vo.v1.response.UserResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,6 +38,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -94,6 +98,28 @@ class UserServiceTest {
         assertThatThrownBy(() -> userService.register(request))
                 .isInstanceOf(ForbiddenOperationException.class)
                 .hasMessageContaining("ROLE_ADMIN");
+
+        verify(userRepository, never()).save(any());
+    }
+
+    /**
+     * A regra de autocadastro só se interessa por papéis privilegiados; a
+     * ausência de papéis é assunto do @NotEmpty no VO de entrada. Sem papéis, o
+     * cadastro falha adiante — mas não como operação proibida, e nada é gravado.
+     */
+    @Test
+    @DisplayName("cadastro sem papéis não é barrado pela regra de autocadastro")
+    void register_semPapeis_naoDeveSerBarradoPelaRegraDeAutocadastro() {
+        UserRegistrationRequest request = new UserRegistrationRequest(
+                "João Silva", "joao@email.com", "joao.silva", "senhaSegura123", null, List.of());
+
+        when(userRepository.findByEmail("joao@email.com")).thenReturn(Optional.empty());
+        when(userRepository.findByLogin("joao.silva")).thenReturn(Optional.empty());
+        when(userMapper.toEntity(request)).thenReturn(new User());
+        when(passwordEncoder.encode("senhaSegura123")).thenReturn("HASHED");
+
+        assertThatThrownBy(() -> userService.register(request))
+                .isNotInstanceOf(ForbiddenOperationException.class);
 
         verify(userRepository, never()).save(any());
     }
@@ -215,5 +241,282 @@ class UserServiceTest {
 
         assertThat(result.getContent()).hasSize(1);
         assertThat(result.getContent().get(0).name()).isEqualTo("João");
+    }
+
+    @Test
+    @DisplayName("cadastro normaliza o CEP dos endereços informados")
+    void register_comEnderecos_deveNormalizarOCep() {
+        UserRegistrationRequest request = new UserRegistrationRequest(
+                "João Silva", "joao@email.com", "joao.silva", "senhaSegura123",
+                Set.of(RoleName.ROLE_CUSTOMER),
+                List.of(new AddressRequest("Rua das Flores", "100", null, "Centro",
+                        "Fortaleza", "CE", "60175-047")));
+
+        User entity = new User();
+        entity.getAddresses().add(Address.builder().street("Rua das Flores").zipCode("60175-047").build());
+
+        when(userRepository.findByEmail("joao@email.com")).thenReturn(Optional.empty());
+        when(userRepository.findByLogin("joao.silva")).thenReturn(Optional.empty());
+        when(userMapper.toEntity(request)).thenReturn(entity);
+        when(passwordEncoder.encode("senhaSegura123")).thenReturn("HASHED");
+        when(roleRepository.findByName(RoleName.ROLE_CUSTOMER))
+                .thenReturn(Optional.of(new Role(ROLE_ID, RoleName.ROLE_CUSTOMER)));
+        when(userRepository.save(any(User.class))).thenAnswer(call -> call.getArgument(0));
+        when(userMapper.toResponse(any(User.class))).thenReturn(
+                new UserResponse(USER_ID, "João Silva", "joao@email.com", "joao.silva",
+                        Set.of(), List.of(), null, null));
+
+        userService.register(request);
+
+        assertThat(entity.getAddresses().get(0).getZipCode()).isEqualTo("60175047");
+    }
+
+    /** O e-mail é normalizado pelo VO Email antes de qualquer verificação. */
+    @Test
+    @DisplayName("cadastro normaliza o e-mail antes de conferir duplicidade")
+    void register_deveNormalizarOEmail() {
+        UserRegistrationRequest request = new UserRegistrationRequest(
+                "João Silva", "  JOAO@Email.COM ", "joao.silva", "senhaSegura123",
+                Set.of(RoleName.ROLE_CUSTOMER), List.of());
+        User entity = new User();
+
+        when(userRepository.findByEmail("joao@email.com")).thenReturn(Optional.empty());
+        when(userRepository.findByLogin("joao.silva")).thenReturn(Optional.empty());
+        when(userMapper.toEntity(request)).thenReturn(entity);
+        when(passwordEncoder.encode("senhaSegura123")).thenReturn("HASHED");
+        when(roleRepository.findByName(RoleName.ROLE_CUSTOMER))
+                .thenReturn(Optional.of(new Role(ROLE_ID, RoleName.ROLE_CUSTOMER)));
+        when(userRepository.save(any(User.class))).thenAnswer(call -> call.getArgument(0));
+        when(userMapper.toResponse(any(User.class))).thenReturn(
+                new UserResponse(USER_ID, "João Silva", "joao@email.com", "joao.silva",
+                        Set.of(), List.of(), null, null));
+
+        userService.register(request);
+
+        assertThat(entity.getEmail()).isEqualTo("joao@email.com");
+    }
+
+    @Test
+    @DisplayName("cadastro com endereços nulos não quebra a normalização")
+    void register_semEnderecos_deveCadastrar() {
+        UserRegistrationRequest request = new UserRegistrationRequest(
+                "João Silva", "joao@email.com", "joao.silva", "senhaSegura123",
+                Set.of(RoleName.ROLE_CUSTOMER), null);
+        User entity = new User();
+        entity.setAddresses(null);
+
+        when(userRepository.findByEmail("joao@email.com")).thenReturn(Optional.empty());
+        when(userRepository.findByLogin("joao.silva")).thenReturn(Optional.empty());
+        when(userMapper.toEntity(request)).thenReturn(entity);
+        when(passwordEncoder.encode("senhaSegura123")).thenReturn("HASHED");
+        when(roleRepository.findByName(RoleName.ROLE_CUSTOMER))
+                .thenReturn(Optional.of(new Role(ROLE_ID, RoleName.ROLE_CUSTOMER)));
+        when(userRepository.save(any(User.class))).thenAnswer(call -> call.getArgument(0));
+        when(userMapper.toResponse(any(User.class))).thenReturn(
+                new UserResponse(USER_ID, "João Silva", "joao@email.com", "joao.silva",
+                        Set.of(), List.of(), null, null));
+
+        userService.register(request);
+
+        verify(userRepository).save(entity);
+    }
+
+    @Test
+    @DisplayName("cadastro com papel que não existe no banco lança ResourceNotFound")
+    void register_comPapelInexistente_deveLancar() {
+        UserRegistrationRequest request = validRegistration();
+        when(userRepository.findByEmail("joao@email.com")).thenReturn(Optional.empty());
+        when(userRepository.findByLogin("joao.silva")).thenReturn(Optional.empty());
+        when(userMapper.toEntity(request)).thenReturn(new User());
+        when(passwordEncoder.encode("senhaSegura123")).thenReturn("HASHED");
+        when(roleRepository.findByName(RoleName.ROLE_CUSTOMER)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.register(request))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Papel não encontrado");
+
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("atualização substitui dados e endereços do usuário")
+    void update_comDadosValidos_deveSubstituirEnderecos() {
+        User user = new User();
+        user.setId(USER_ID);
+        user.setName("João Silva");
+        user.addAddress(Address.builder().street("Endereço antigo").build());
+
+        UserUpdateRequest request = new UserUpdateRequest("João Atualizado", "novo@email.com",
+                "joao.novo", List.of(new AddressRequest("Rua Nova", "200", null, "Centro",
+                "Fortaleza", "CE", "60175-047")));
+
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail("novo@email.com")).thenReturn(Optional.empty());
+        when(userRepository.findByLogin("joao.novo")).thenReturn(Optional.empty());
+        when(addressMapper.toEntity(any(AddressRequest.class)))
+                .thenReturn(Address.builder().street("Rua Nova").zipCode("60175-047").build());
+        when(userRepository.save(any(User.class))).thenAnswer(call -> call.getArgument(0));
+        when(userMapper.toResponse(any(User.class))).thenReturn(
+                new UserResponse(USER_ID, "João Atualizado", "novo@email.com", "joao.novo",
+                        Set.of(), List.of(), null, null));
+
+        UserResponse result = userService.update(USER_ID, request);
+
+        assertThat(result.name()).isEqualTo("João Atualizado");
+        assertThat(user.getName()).isEqualTo("João Atualizado");
+        assertThat(user.getEmail()).isEqualTo("novo@email.com");
+        assertThat(user.getLogin()).isEqualTo("joao.novo");
+        assertThat(user.getAddresses()).singleElement()
+                .satisfies(address -> {
+                    assertThat(address.getStreet()).isEqualTo("Rua Nova");
+                    assertThat(address.getZipCode()).isEqualTo("60175047");
+                    assertThat(address.getUserId()).isEqualTo(USER_ID);
+                });
+    }
+
+    @Test
+    @DisplayName("atualização sem lista de endereços deixa o usuário sem endereços")
+    void update_semEnderecos_deveLimparAListaAntiga() {
+        User user = new User();
+        user.setId(USER_ID);
+        user.addAddress(Address.builder().street("Endereço antigo").build());
+
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail("joao@email.com")).thenReturn(Optional.empty());
+        when(userRepository.findByLogin("joao.silva")).thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class))).thenAnswer(call -> call.getArgument(0));
+        when(userMapper.toResponse(any(User.class))).thenReturn(
+                new UserResponse(USER_ID, "João", "joao@email.com", "joao.silva",
+                        Set.of(), List.of(), null, null));
+
+        userService.update(USER_ID, new UserUpdateRequest("João", "joao@email.com", "joao.silva", null));
+
+        assertThat(user.getAddresses()).isEmpty();
+        verifyNoInteractions(addressMapper);
+    }
+
+    /**
+     * Manter o próprio e-mail e o próprio login não é duplicidade: a checagem
+     * ignora o registro que está sendo editado.
+     */
+    @Test
+    @DisplayName("atualização que mantém o próprio e-mail e login é permitida")
+    void update_mantendoOsProprios_naoDeveAcusarDuplicidade() {
+        User user = new User();
+        user.setId(USER_ID);
+        user.setEmail("joao@email.com");
+        user.setLogin("joao.silva");
+
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail("joao@email.com")).thenReturn(Optional.of(user));
+        when(userRepository.findByLogin("joao.silva")).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(call -> call.getArgument(0));
+        when(userMapper.toResponse(any(User.class))).thenReturn(
+                new UserResponse(USER_ID, "João", "joao@email.com", "joao.silva",
+                        Set.of(), List.of(), null, null));
+
+        userService.update(USER_ID, new UserUpdateRequest("João", "joao@email.com", "joao.silva", List.of()));
+
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    @DisplayName("atualização com e-mail de outro usuário lança conflito")
+    void update_comEmailDeOutro_deveLancar() {
+        User user = new User();
+        user.setId(USER_ID);
+        User outro = new User();
+        outro.setId(OTHER_USER_ID);
+
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail("ocupado@email.com")).thenReturn(Optional.of(outro));
+
+        assertThatThrownBy(() -> userService.update(USER_ID,
+                new UserUpdateRequest("João", "ocupado@email.com", "joao.silva", List.of())))
+                .isInstanceOf(DuplicateResourceException.class)
+                .hasMessageContaining("e-mail");
+
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("atualização com login de outro usuário lança conflito")
+    void update_comLoginDeOutro_deveLancar() {
+        User user = new User();
+        user.setId(USER_ID);
+        User outro = new User();
+        outro.setId(OTHER_USER_ID);
+
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail("joao@email.com")).thenReturn(Optional.empty());
+        when(userRepository.findByLogin("ocupado")).thenReturn(Optional.of(outro));
+
+        assertThatThrownBy(() -> userService.update(USER_ID,
+                new UserUpdateRequest("João", "joao@email.com", "ocupado", List.of())))
+                .isInstanceOf(DuplicateResourceException.class)
+                .hasMessageContaining("login");
+
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("atualização de usuário inexistente lança ResourceNotFound")
+    void update_inexistente_deveLancar() {
+        when(userRepository.findById(MISSING_USER_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.update(MISSING_USER_ID,
+                new UserUpdateRequest("João", "joao@email.com", "joao.silva", List.of())))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("troca de senha de usuário inexistente lança ResourceNotFound")
+    void changePassword_inexistente_deveLancar() {
+        when(userRepository.findById(MISSING_USER_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.changePassword(MISSING_USER_ID,
+                new PasswordChangeRequest("atual123", "nova12345", "nova12345")))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("exclusão de usuário existente remove o registro")
+    void delete_existente_deveRemover() {
+        when(userRepository.existsById(USER_ID)).thenReturn(true);
+
+        userService.delete(USER_ID);
+
+        verify(userRepository).deleteById(USER_ID);
+    }
+
+    @Test
+    @DisplayName("consulta por id devolve o usuário mapeado")
+    void findById_existente_deveDevolverOUsuario() {
+        User user = new User();
+        user.setId(USER_ID);
+        UserResponse expected = new UserResponse(USER_ID, "João", "joao@email.com", "joao.silva",
+                Set.of(), List.of(), null, null);
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(userMapper.toResponse(user)).thenReturn(expected);
+
+        assertThat(userService.findById(USER_ID)).isEqualTo(expected);
+    }
+
+    @Test
+    @DisplayName("listagem devolve a página de usuários mapeados")
+    void findAll_deveRetornarPagina() {
+        User user = new User();
+        Pageable pageable = PageRequest.of(0, 20);
+        when(userRepository.findAll(pageable)).thenReturn(new PageImpl<>(List.of(user)));
+        when(userMapper.toResponse(user)).thenReturn(
+                new UserResponse(USER_ID, "João", "joao@email.com", "joao.silva",
+                        Set.of(), List.of(), null, null));
+
+        Page<UserResponse> result = userService.findAll(pageable);
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).login()).isEqualTo("joao.silva");
     }
 }

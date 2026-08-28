@@ -43,6 +43,20 @@ class AuditorProviderTest {
         assertThat(auditorProvider.currentAuditor()).isEqualTo("system");
     }
 
+    /**
+     * O token construído sem authorities nasce com isAuthenticated() falso — é o
+     * estado de uma tentativa de autenticação ainda não confirmada, que também
+     * não pode nomear o auditor.
+     */
+    @Test
+    @DisplayName("com autenticação ainda não confirmada, audita como \"system\"")
+    void comAutenticacaoNaoConfirmada_deveAuditarComoSystem() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("cliente.demo", "senha"));
+
+        assertThat(auditorProvider.currentAuditor()).isEqualTo("system");
+    }
+
     @Test
     @DisplayName("com usuário autenticado, audita com o login")
     void comUsuarioAutenticado_deveAuditarComOLogin() {
