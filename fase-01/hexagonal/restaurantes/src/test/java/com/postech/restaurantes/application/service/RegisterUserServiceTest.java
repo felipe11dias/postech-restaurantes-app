@@ -160,4 +160,51 @@ class RegisterUserServiceTest {
         assertThrows(InvalidEmailException.class, () -> service.register(invalido));
         verify(saveUserPort, never()).save(any());
     }
+
+    /**
+     * A guarda de autocadastro só se interessa por papéis privilegiados; a
+     * ausência de papéis é recusada adiante, na resolução — mas o cadastro não
+     * pode ser gravado em nenhum dos dois casos.
+     */
+    @Test
+    @DisplayName("recusa cadastro sem papéis informados")
+    void recusaSemPapeis() {
+        given(checkUserExistsPort.existsByEmailExcluding(anyString(), isNull())).willReturn(false);
+        given(checkUserExistsPort.existsByLoginExcluding(anyString(), isNull())).willReturn(false);
+
+        assertThrows(IllegalArgumentException.class, () -> service.register(comando(Set.of())));
+        verify(saveUserPort, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("recusa cadastro com a lista de papéis nula")
+    void recusaPapeisNulos() {
+        given(checkUserExistsPort.existsByEmailExcluding(anyString(), isNull())).willReturn(false);
+        given(checkUserExistsPort.existsByLoginExcluding(anyString(), isNull())).willReturn(false);
+
+        assertThrows(IllegalArgumentException.class, () -> service.register(comando(null)));
+        verify(saveUserPort, never()).save(any());
+    }
+
+    /** Endereço é opcional no cadastro: sem lista, o usuário nasce sem endereços. */
+    @Test
+    @DisplayName("cadastra usuário sem endereços quando a lista vem nula")
+    void cadastraSemEnderecos() {
+        RegisterUserCommand semEnderecos = new RegisterUserCommand(
+                "Maria Silva", "maria@email.com", "maria.silva", "senha12345",
+                Set.of(RoleName.ROLE_CUSTOMER), null);
+
+        given(checkUserExistsPort.existsByEmailExcluding(anyString(), isNull())).willReturn(false);
+        given(checkUserExistsPort.existsByLoginExcluding(anyString(), isNull())).willReturn(false);
+        given(loadRolePort.findByName(RoleName.ROLE_CUSTOMER))
+                .willReturn(Optional.of(DomainFixtures.roleCustomer()));
+        given(passwordEncoderPort.encode("senha12345")).willReturn(DomainFixtures.SENHA_HASH);
+        given(saveUserPort.save(any())).willAnswer(call -> call.getArgument(0));
+
+        service.register(semEnderecos);
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(saveUserPort).save(captor.capture());
+        assertEquals(0, captor.getValue().getAddresses().size());
+    }
 }

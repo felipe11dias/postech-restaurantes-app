@@ -51,4 +51,10 @@ class EmailTest {
     void rejeitaAusente(String valor) {
         assertThrows(InvalidEmailException.class, () -> new Email(valor));
     }
+
+    @Test
+    @DisplayName("toString devolve o e-mail normalizado")
+    void toStringDevolveValor() {
+        assertEquals("joao@email.com", new Email("JOAO@Email.com").toString());
+    }
 }

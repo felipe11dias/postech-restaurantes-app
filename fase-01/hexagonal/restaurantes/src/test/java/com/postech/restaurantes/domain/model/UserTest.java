@@ -12,6 +12,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -148,6 +149,100 @@ class UserTest {
 
             assertTrue(user.hasRole(RoleName.ROLE_CUSTOMER));
             assertFalse(user.hasRole(RoleName.ROLE_ADMIN));
+        }
+    }
+
+    @Nested
+    @DisplayName("listas ausentes")
+    class ListasAusentes {
+
+        @Test
+        @DisplayName("criar sem endereços resulta em usuário sem endereços")
+        void criarSemEnderecos() {
+            User user = User.newUser("Maria", new Email("maria@email.com"), "maria",
+                    DomainFixtures.SENHA_HASH, Set.of(DomainFixtures.roleCustomer()), null);
+
+            assertTrue(user.getAddresses().isEmpty());
+        }
+
+        @Test
+        @DisplayName("substituir endereços por nulo esvazia a lista, em vez de falhar")
+        void substituirPorNulo() {
+            User user = DomainFixtures.usuarioPersistido();
+
+            user.replaceAddresses(null);
+
+            assertTrue(user.getAddresses().isEmpty());
+        }
+
+        /**
+         * O restore é alimentado pelo adapter de persistência, que monta o usuário
+         * antes de anexar papéis e endereços — então precisa aceitar ambos nulos.
+         */
+        @Test
+        @DisplayName("restore aceita papéis e endereços nulos")
+        void restoreAceitaColecoesNulas() {
+            User user = User.restore(UUID.randomUUID(), "Maria", new Email("maria@email.com"),
+                    "maria", DomainFixtures.SENHA_HASH, null, null, null, null);
+
+            assertTrue(user.getRoles().isEmpty());
+            assertTrue(user.getAddresses().isEmpty());
+        }
+    }
+
+    /**
+     * Identidade de entidade: o que distingue dois usuários é o id, não os dados.
+     * Um usuário ainda não persistido não tem identidade — e por isso não pode
+     * ser considerado igual a nenhum outro, nem mesmo a outro sem id.
+     */
+    @Nested
+    @DisplayName("identidade")
+    class Identidade {
+
+        @Test
+        @DisplayName("usuários com o mesmo id são o mesmo usuário")
+        void mesmoId() {
+            UUID id = UUID.randomUUID();
+
+            User um = DomainFixtures.usuarioPersistido(id);
+            User outro = DomainFixtures.usuarioPersistido(id);
+
+            assertEquals(um, outro);
+            assertEquals(um.hashCode(), outro.hashCode());
+        }
+
+        @Test
+        @DisplayName("usuários com ids diferentes são usuários diferentes")
+        void idsDiferentes() {
+            assertNotEquals(DomainFixtures.usuarioPersistido(), DomainFixtures.usuarioPersistido());
+        }
+
+        @Test
+        @DisplayName("é igual a si mesmo")
+        void igualASiMesmo() {
+            User user = DomainFixtures.usuarioPersistido();
+
+            assertEquals(user, user);
+        }
+
+        @Test
+        @DisplayName("usuário sem id não é igual a nenhum outro")
+        void semIdNaoEhIgualANinguem() {
+            User semId = DomainFixtures.novoUsuario();
+
+            assertNotEquals(semId, DomainFixtures.novoUsuario());
+            assertNotEquals(semId, DomainFixtures.usuarioPersistido());
+            assertNotEquals(DomainFixtures.usuarioPersistido(), semId);
+            assertEquals(0, semId.hashCode());
+        }
+
+        @Test
+        @DisplayName("não é igual a nulo nem a objeto de outro tipo")
+        void outrosTipos() {
+            User user = DomainFixtures.usuarioPersistido();
+
+            assertNotEquals(user, null);
+            assertNotEquals(user, "Maria Silva");
         }
     }
 }

@@ -37,7 +37,7 @@ Diferenças que valem a leitura lado a lado:
 | Representações por requisição | 2 (DTO ↔ entidade) | 3 (DTO ↔ command/view ↔ domínio) |
 | Testar uma regra | mock de repositório Spring | mock de interfaces próprias, sem framework |
 | Arquitetura verificada | ArchUnit — 5 regras de camadas | ArchUnit — 9 regras da regra de dependência |
-| Suíte automatizada | 23 testes | 80 testes |
+| Suíte automatizada | 252 testes · 100% cobertura | 290 testes · 100% cobertura |
 
 O custo do hexagonal é real e está registrado no relatório: mais uma camada de mapeamento e
 uma raiz de composição para manter. O ganho é um núcleo que compila e roda sem framework.
@@ -60,10 +60,11 @@ fase-01/
 │       ├── pom.xml, Dockerfile, docker-compose.yml, .env.example
 │       ├── postman/              # coleção de testes
 │       └── src/...
-└── relatorios/                   # entregáveis oficiais (viram PDF na entrega)
+└── relatorios/                   # entregáveis oficiais
     ├── camadas/
-    │   ├── relatorio-tech-challenge-fase01-v1.1.md
-    │   ├── relatorio-tech-challenge-fase01-v2.md
+    │   ├── Tech Challenge - Entregável.pdf        # relatório de entrega (documento final)
+    │   ├── relatorio-tech-challenge-fase01-v2.md  # relatório detalhado da construção
+    │   ├── relatorio-tech-challenge-fase01-v1.1.md / .pdf
     │   └── CHANGELOG.md
     └── hexagonal/
         ├── relatorio-fase01-hexagonal.md   # relatório técnico (v2.0)
@@ -80,7 +81,7 @@ fase-01/
 | README do projeto | ✅ | ✅ |
 | Documentação Swagger | ✅ gerada pela app | ✅ gerada pela app |
 | Coleção Postman (JSON) | ✅ `camadas/restaurantes/postman/` | ✅ `hexagonal/restaurantes/postman/` |
-| Testes automatizados | ✅ 23 testes | ✅ 80 testes |
+| Testes automatizados | ✅ 252 testes · 100% cobertura | ✅ 290 testes · 100% cobertura |
 
 ## Executando
 

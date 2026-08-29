@@ -49,4 +49,10 @@ class ZipCodeTest {
     void rejeitaAusente(String valor) {
         assertThrows(InvalidZipCodeException.class, () -> new ZipCode(valor));
     }
+
+    @Test
+    @DisplayName("toString devolve o CEP mascarado")
+    void toStringDevolveMascarado() {
+        assertEquals("01001-000", new ZipCode("01001000").toString());
+    }
 }
